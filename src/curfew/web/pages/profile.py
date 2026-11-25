@@ -180,7 +180,7 @@ def render_profile(
             )
             + post_form(
                 "/profile",
-                {**hidden, "action": "add_member"},
+                {**hidden, "action": "set_profile"},
                 f'<label>Add device <select name="mac" required>{options}</select></label>'
                 + submit("Add"),
                 "inline-form",

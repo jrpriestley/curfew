@@ -9,6 +9,7 @@
     curfew forget DEVICE             drop a device's record: it's new again
     curfew wake DEVICE               send a wake-on-LAN packet
     curfew rename DEVICE NAME
+    curfew type DEVICE KIND
     curfew pause PROFILE|all [FOR]   FOR: 30m, 1h, 2h or morning; default until resumed
     curfew resume PROFILE|all
     curfew bonus PROFILE FOR|end     15m, 30m or 1h more (now, or ahead of the next block);
@@ -43,7 +44,7 @@ from curfew.config import (
     RECENT_DAYS,
     TRAFFIC_DB,
 )
-from curfew.devices import apply_device_action, display_name
+from curfew.devices import KIND_LABELS, apply_device_action, display_name
 from curfew.firewall import router_active
 from curfew.leases import (
     MAC_RE,
@@ -364,6 +365,11 @@ def parser() -> argparse.ArgumentParser:
     rename = commands.add_parser("rename", help="rename a device")
     rename.add_argument("device", help="name, MAC or IP")
     rename.add_argument("name")
+    kind = commands.add_parser("type", help="set a device's type")
+    kind.add_argument("device", help="name, MAC or IP")
+    kind.add_argument(
+        "kind", choices=["auto", *sorted(KIND_LABELS)], help="auto: guessed from its name"
+    )
     pause = commands.add_parser("pause", help="pause a profile (or all)")
     pause.add_argument("profile", help="profile name, or all")
     pause.add_argument("duration", nargs="?", help=f"one of {', '.join(PAUSE_DURATIONS)}")
@@ -467,10 +473,11 @@ def run(args: argparse.Namespace) -> str:
         mac = resolve_device(args.device, state, leases, conf_names)
         wake(mac)
         return f"wake: sent to {mac}"
-    if args.command in {"block", "unblock", "approve", "rename", "guest", "forget"}:
+    if args.command in {"block", "unblock", "approve", "rename", "type", "guest", "forget"}:
         mac = resolve_device(args.device, state, leases, conf_names)
         name = getattr(args, "name", "") or ""
-        change(lambda current: apply_device_action(current, mac, args.command, name))
+        kind = getattr(args, "kind", "").removeprefix("auto")
+        change(lambda current: apply_device_action(current, mac, args.command, name, kind))
         shown = display_name(mac, state["devices"].get(mac, {}), leases.get(mac), conf_names)
         return f"{args.command}: {name if args.command == 'rename' else shown or mac}"
     profile_ids = resolve_profiles(args.profile, state)

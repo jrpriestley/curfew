@@ -83,7 +83,8 @@ def render_device(
     """Return one device's page: status and facts, controls, when in use, and its charts."""
     local = now.astimezone()
     lease = leases.get(mac)
-    name = display_name(mac, state["devices"].get(mac, {}), lease, conf_names)
+    record = state["devices"].get(mac, {})
+    name = display_name(mac, record, lease, conf_names)
     subject = name or "Unknown device"
     status = internet_status(state, mac, local)
     today = usage_totals(traffic, local_midnight(now)).get(mac)
@@ -98,14 +99,14 @@ def render_device(
     )
     body = (
         '<p class="crumbs"><a href="/devices">Devices</a> › Device</p>'
-        f'<h1 class="dev">{device_badge(name, mac, lease)}{rename_box(mac, name)}</h1>'
+        f'<h1 class="dev">{device_badge(name, mac, lease, record)}{rename_box(mac, name)}</h1>'
         + panel(
             "now",
             "Right now",
             status_line(state, mac, local)
-            + facts(mac, name, lease, today, first_seen(traffic, mac), now),
+            + facts(mac, name, record, lease, today, first_seen(traffic, mac), now),
         )
-        + panel("manage", "Manage", manage(state, mac, status, lease))
+        + panel("manage", "Manage", manage(state, mac, name, status, lease))
         + device_dhcp(state, mac, name)
         + render_live_panel(f"/live.json?mac={mac}", "Live", "device")
         + panel(

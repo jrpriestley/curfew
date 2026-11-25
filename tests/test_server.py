@@ -8,9 +8,23 @@ from helpers import MEMBER, actions, forms, lease, make_state, text
 from curfew import config, traffic
 from curfew.config import STATE_FILE
 from curfew.state import save_state
-from curfew.web import layout
+from curfew.web import auth, layout
 from curfew.web import server as web_server
 from curfew.web.undo import FLASH_COOKIE
+
+
+def test_sessions_outlast_a_restart_and_the_file_cant_sign_in(tmp_path) -> None:
+    """An update restarts curfew: whoever was signed in stays so. Only hashes are kept."""
+    path = tmp_path / "sessions.json"
+    sessions = auth.Sessions(path)
+    token, gone = sessions.create("al"), sessions.create("cy")
+    sessions.end(gone)
+    assert token not in path.read_text() and path.stat().st_mode & 0o777 == 0o600
+    again = auth.Sessions(path)
+    assert again.user(token) == "al" and not again.valid(gone)
+    assert not again.valid(next(iter(json.loads(path.read_text()))))  # a hash isn't a token
+    path.write_text("nonsense")
+    assert not auth.Sessions(path).valid(token)
 
 
 def test_requests_need_a_session(server) -> None:
@@ -51,6 +65,10 @@ def test_theme_choice_is_remembered(server) -> None:
     assert "SameSite=Lax" in response.getheader("Set-Cookie")
     _response, body = request("GET", "/nowhere", cookie=f"{layout.THEME_COOKIE}=dark")
     assert 'data-theme="dark"' in body.split("<head>")[0]
+    _response, body = request("GET", "/nowhere", cookie=f"{layout.THEME_COOKIE}=midnight")
+    assert 'data-theme="midnight"' in body.split("<head>")[0]
+    assert '<meta name="theme-color" content="#121a2e">' in body
+    assert body.count('name="theme-color"') == 1
     _response, body = request("GET", "/nowhere", cookie=f"{layout.THEME_COOKIE}=evil")
     assert "data-theme" not in body.split("<head>")[0]
     response, _ = request("POST", "/theme", "theme=system")
@@ -123,6 +141,17 @@ def flash_token(response) -> str:
     cookie = response.getheader("Set-Cookie")
     assert cookie.startswith(f"{FLASH_COOKIE}=")
     return cookie.split(";")[0].split("=", 1)[1]
+
+
+def test_taking_a_device_out_of_its_profile_is_the_none_choice(server) -> None:
+    """The one drop-down's None empties the profile, and says so."""
+    app, request = server
+    app.state["profiles"] = {"abcd1234": {"name": "Kids", "members": [MEMBER], "schedules": []}}
+    body = f"mac={MEMBER}&action=set_profile&id="
+    response, _ = request("POST", "/profile", body, referer="/devices")
+    assert response.status == 303 and app.state["profiles"]["abcd1234"]["members"] == []
+    page = request("GET", "/devices", cookie=f"{FLASH_COOKIE}={flash_token(response)}")[1]
+    assert f"Took {MEMBER} out of its profile" in text(page)
 
 
 def test_a_change_shows_a_toast_and_can_be_undone_once(server) -> None:

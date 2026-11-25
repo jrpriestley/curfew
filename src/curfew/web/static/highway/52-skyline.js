@@ -7,7 +7,7 @@
   // The wasteland's distance: columns of black smoke from fires over the horizon, their
   // glow at the foot by night.
   function drawPlumes(time) {
-    var rate = 0.06, layer = odometer * rate, t = time / 1000, puffs = sharp ? 22 : 10;
+    var rate = 0.057, layer = odometer * rate, t = time / 1000, puffs = sharp ? 22 : 10;
     var haze = smokeColour(blend(blend([52, 46, 44], skyColour('low'), 0.35), [10, 10, 16], light.night * 0.7));
     for (var m = Math.floor((layer - 120) / 230); m <= Math.floor((layer + cols + 40) / 230); m += 1) {
       var seed = seeded(m * 7919 + 41)(), at = m * 230 + seed * 120, biome = biomeAt(at, rate);
@@ -344,7 +344,7 @@
     var built = rise.make(p, seeded(Math.round(seed * 1e6)));
     canvas.width = Math.ceil(built.width * fine);
     canvas.height = Math.ceil(built.height * fine);
-    p.setTransform(fine, 0, 0, fine, 0, 0);
+    p.setTransform(canvas.width / built.width, 0, 0, canvas.height / built.height, 0, 0);
     p.clearRect(0, 0, built.width, built.height);
     built.draw();
     return (riseSprites[key] = {canvas: canvas, width: built.width, height: built.height, version: version, used: Date.now()});
@@ -352,7 +352,7 @@
   // Each building stands where its piece of the layer is of its biome (`spanOver`).
   // Sprites are remade for the light at the `remakes` pace.
   function drawRises(now) {
-    var rate = 0.07, layer = odometer * rate, fine = Math.min(k, 2), made = 0;
+    var rate = RISE_RATE, layer = odometer * rate, fine = Math.min(k, 2), made = 0;
     Object.keys(RISES).forEach(function (biome) {
       var rise = RISES[biome];
       if (!rise.gap) {
@@ -434,7 +434,7 @@
   var ADS = [[255, 60, 170], [60, 230, 255], [255, 200, 60], [150, 90, 255], [90, 255, 150]], ADVERT_FADE = 1200;
   var AD_WIDE = 16, AD_TALL = 25, AD_GAP = 2, STRIP_TALL = ADS.length * (AD_TALL + AD_GAP), STRIPS = 3;
   function drawAdverts(time) {
-    var rate = 0.07, layer = odometer * rate, t = time / 1000, bright = 0.4 + 0.6 * Math.min(1, light.night * 1.6);
+    var rate = RISE_RATE, layer = odometer * rate, t = time / 1000, bright = 0.4 + 0.6 * Math.min(1, light.night * 1.6);
     ctx.globalCompositeOperation = 'lighter';
     for (var m = Math.floor((layer - 60) / 62); m <= Math.floor((layer + cols + 30) / 62); m += 1) {
       // Neighbouring seeds draw alike, and the banners stood in a row: scattered first.
@@ -445,11 +445,11 @@
       var into = (at - spanEdge(spanOver(at, rate), rate)) / rate;
       var present = flow.smoothstep(Math.min(into, SPAN - into) / ADVERT_FADE);
       var flicker = Math.sin(t * 27 + seed * 40) > 0.97 ? 0.5 : 1;
-      banner(at - layer, random, bright * flicker * present, t);
+      banner(at - layer, random, bright * flicker * present, t, (at - cols / 2) / rate + cols / 2, seed);
     }
     ctx.globalCompositeOperation = 'source-over';
   }
-  function banner(x, random, s, t) {
+  function banner(x, random, s, t, passed, seed) {
     var strip = adStrip(Math.floor(random() * STRIPS)), wide = AD_WIDE * (0.8 + 0.5 * random());
     var top = 10 + random() * 46, base = RT - 66, bottom = base - 8 - random() * 14, tall = bottom - top;
     var speed = (5 + 5 * random()) * (random() < 0.7 ? 1 : -1), start = random() * STRIP_TALL;
@@ -473,7 +473,52 @@
     if (light.night > 0.2) {
       glow(x, base, 8, c, 0.5 * s * Math.min(1, (light.night - 0.2) * 2));
     }
-    adLights.push({x: x, c: c, s: s});
+    // On the road it lights, to each side of where we pass it.
+    AD_AIMS.forEach(function (aim) {
+      var off = aim + (seed - 0.4) * 200, at = passed + off;
+      if (biomeAt(at, 1) === 'badlands') {
+        adCasts.push({at: at, lean: CAST_LEAN * Math.max(-1, Math.min(1, off / 340)), c: c, s: s / (1 + Math.abs(off) / 500)});
+      }
+    });
+  }
+  // The light the adverts throw on the road: each a patch of it that lies where it falls, so
+  // it goes by as the road does (it used to keep under its advert, and slid along the road).
+  // A trapezoid, as it comes across from far off: it spreads toward us, and leans away from
+  // the advert the further along the road it's thrown, but less than it spreads, so neither
+  // side is ever upright. By night; brighter on a wet road.
+  var adCasts = [], AD_AIMS = [-340, -110, 110, 340], CAST_FAR = 15, CAST_NEAR = 36, CAST_LEAN = 13, CAST_TALL = 58;
+  function castStrength(cast) {
+    return cast.s * Math.min(1, Math.max(0, light.night - 0.2) * 2) * (0.6 + 0.4 * roadWet);
+  }
+  // Its middle and half its width, `down` of the way across from its far edge (0 to 1).
+  function castAt(cast, down) {
+    return {x: cast.at - odometer + cast.lean * down, half: CAST_FAR + (CAST_NEAR - CAST_FAR) * down};
+  }
+  function castAcross(y) {
+    return (y - RT) / CAST_TALL;
+  }
+  function castAdverts() {
+    ctx.globalCompositeOperation = 'lighter';
+    adCasts.forEach(function (cast) {
+      var far = castAt(cast, 0), near = castAt(cast, 1), strength = castStrength(cast);
+      if (strength < 0.02 || Math.max(far.x, near.x) < -CAST_NEAR || Math.min(far.x, near.x) > cols + CAST_NEAR) {
+        return;
+      }
+      // Faded with alpha, not in the gradient, so the gradient stays cached.
+      ctx.fillStyle = vertical(ctx, RT, RT + CAST_TALL, [[0, css(cast.c, 0.34)], [0.5, css(cast.c, 0.24)], [1, css(cast.c, 0)]]);
+      // Laid over itself, narrower each time: its sides soft.
+      (sharp ? [1, 0.93, 0.86, 0.79, 0.72, 0.65, 0.58, 0.5] : [1, 0.75]).forEach(function (share, i, all) {
+        ctx.globalAlpha = strength * 2 / all.length;
+        ctx.beginPath();
+        ctx.moveTo(far.x - far.half * share, RT);
+        ctx.lineTo(far.x + far.half * share, RT);
+        ctx.lineTo(near.x + near.half * share, RT + CAST_TALL);
+        ctx.lineTo(near.x - near.half * share, RT + CAST_TALL);
+        ctx.fill();
+      });
+    });
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
   // A line down each side, a light running along it, and a cap at each end.
   function bannerFrame(px, top, wide, tall, c, s, t) {

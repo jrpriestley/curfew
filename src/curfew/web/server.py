@@ -7,6 +7,7 @@ import http.server
 import json
 import re
 import socket
+import sqlite3
 import ssl
 import sys
 import time
@@ -20,6 +21,7 @@ from curfew.config import (
     BIND_ADDRESS,
     EMBER_DIR,
     LINE_BPS,
+    SESSIONS_FILE,
     TLS_DIR,
     TRAFFIC_DB,
     VIEWERS,
@@ -68,6 +70,7 @@ from curfew.web.auth import (
 from curfew.web.components import FOLD_COOKIE, parse_folds
 from curfew.web.icons import ICON_SIZES, icon_png, manifest
 from curfew.web.layout import (
+    FLOW,
     FLOW_SCRIPTS,
     FLOW_SOUNDS,
     PAGE_SCRIPT,
@@ -81,6 +84,22 @@ from curfew.web.layout import (
 from curfew.web.pages.device import render_device
 from curfew.web.pages.devices import main_url, render_devices, view_from_query
 from curfew.web.pages.dhcp import render_dhcp
+from curfew.web.pages.flow import (
+    DEFAULT_PREFS,
+    FLOW_COOKIE,
+    FLOW_LOOKS,
+    SAVER_CHOICES,
+    SAVER_COOKIE,
+    SCREEN_THEMES,
+    SOUND_CHOICES,
+    SOUND_COOKIE,
+    TV_FLOW,
+    TV_FRAMES,
+    TV_LIVE,
+    ZEN_COOKIE,
+    ScreenPrefs,
+    render_flow,
+)
 from curfew.web.pages.home import render_home
 from curfew.web.pages.network import (
     QUALITY_RANGES,
@@ -89,25 +108,7 @@ from curfew.web.pages.network import (
     render_pihole_panel,
 )
 from curfew.web.pages.profile import render_profile
-from curfew.web.pages.tv import (
-    DEFAULT_PREFS,
-    FLOW_COOKIE,
-    FLOW_LOOKS,
-    SAVER_CHOICES,
-    SAVER_COOKIE,
-    SOUND_CHOICES,
-    SOUND_COOKIE,
-    TV_FLOW,
-    TV_FRAMES,
-    TV_LIVE,
-    TV_SETTINGS,
-    TV_TABS,
-    TV_THEMES,
-    TvPrefs,
-    render_tv,
-    render_tv_flow,
-    render_tv_settings,
-)
+from curfew.web.pages.tv import TV_SETTINGS, TV_TABS, render_tv, render_tv_settings
 from curfew.web.pages.usage import render_usage, usage_target
 from curfew.web.undo import FLASH_COOKIE, UndoLog, describe, restorer, toast_html
 
@@ -118,7 +119,7 @@ class App:
     def __init__(self) -> None:
         """Set up auth and the undo log."""
         self.shadow = Shadow()
-        self.sessions = Sessions()
+        self.sessions = Sessions(SESSIONS_FILE)
         self.undo = UndoLog()
 
     def change(self, mutate: object) -> object:
@@ -236,7 +237,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # Referer stays on this site: form posts use it to return to their page.
         self.send_header("Referrer-Policy", "same-origin")
         for key, value in (headers or {}).items():
-            self.send_header(key, value)
+            for each in value if isinstance(value, list) else [value]:
+                self.send_header(key, each)
         self.end_headers()
         self.wfile.write(data)
 
@@ -244,16 +246,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Send an HTML page, in the visitor's chosen theme, with the toast for a change
         just made (once: the flash cookie is cleared)."""
         theme = self.cookie_value(THEME_COOKIE)
-        if theme in {"light", "dark"}:
+        if theme in THEMES and theme != "system":
             body = body.replace('<html lang="en">', f'<html lang="en" data-theme="{theme}">', 1)
             # The browser's own bar (a phone's status bar) follows the chosen theme
-            # too, not the system's: keep only that theme's colour.
+            # too, not the system's: that theme's colour alone.
             body = re.sub(
-                rf'<meta name="theme-color" content="[^"]*" media="\(prefers-color-scheme: '
-                rf'(?!{theme})\w+\)">',
+                r'<meta name="theme-color" content="[^"]*" media="[^"]*">',
                 "",
                 body,
-            ).replace(f' media="(prefers-color-scheme: {theme})"', "", 1)
+            ).replace(
+                "<title>", f'<meta name="theme-color" content="{THEMES[theme][2]}"><title>', 1
+            )
         token = self.cookie_value(FLASH_COOKIE)
         if token is not None and "</main>" in body and not (headers or {}).get("Set-Cookie"):
             headers = {**(headers or {}), "Set-Cookie": f"{FLASH_COOKIE}=; Path=/; Max-Age=0"}
@@ -377,12 +380,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Return True for the TV (its key's cookie) or a signed-in visitor."""
         return tv_key_valid(self.cookie_value(TV_COOKIE)) or self.signed_in()
 
-    def tv_prefs(self) -> TvPrefs:
-        """Return what Settings keeps on the TV (its cookies), else the defaults."""
+    def tv_app(self) -> bool:
+        """Return True for the Fire TV app (Android's WebView), as app.js tells it."""
+        return "; wv)" in self.headers.get("User-Agent", "")
+
+    def screen_prefs(self) -> ScreenPrefs:
+        """Return what this screen keeps (its cookies), else the defaults."""
         theme, saver = self.cookie_value(THEME_COOKIE), self.cookie_value(SAVER_COOKIE)
         look, sound = self.cookie_value(FLOW_COOKIE), self.cookie_value(SOUND_COOKIE)
-        return TvPrefs(
-            theme if theme in TV_THEMES else DEFAULT_PREFS.theme,
+        if sound == "on":
+            sound = "full"  # (what it was till 1.135.0, kept for a year)
+        return ScreenPrefs(
+            theme if theme in SCREEN_THEMES else DEFAULT_PREFS.theme,
             saver if saver in SAVER_CHOICES else DEFAULT_PREFS.saver,
             look if look in FLOW_LOOKS else DEFAULT_PREFS.flow,
             sound if sound in SOUND_CHOICES else DEFAULT_PREFS.sound,
@@ -408,16 +417,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             )
             self.redirect(url.path, {"Set-Cookie": cookie})
             return
-        if (
-            url.path not in {TV_FLOW, TV_LIVE}
-            and self.viewer()
-            and not tv_key_valid(self.cookie_value(TV_COOKIE))
-        ):
-            self.redirect("/")  # a read-only account sees the screensaver, not the TV's tabs
+        is_tv = tv_key_valid(self.cookie_value(TV_COOKIE))
+        if url.path == TV_FLOW and self.signed_in() and not is_tv:
+            self.move_to_flow(url)
+            return
+        if url.path != TV_LIVE and self.viewer() and not is_tv:
+            self.redirect("/")  # a read-only account sees Flow, not the TV's tabs
             return
         if not self.tv_allowed():
             if url.path == TV_LIVE:
                 self.send(401)
+            elif url.path == TV_FLOW and not self.tv_app():
+                self.redirect(FLOW + (f"?{url.query}" if url.query else ""))  # to sign in
             else:
                 self.send_message(
                     403, "This TV isn't signed in: open the link curfew tv-link prints."
@@ -444,7 +455,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_live(url)
             return
         now = dt.datetime.now(dt.UTC)
-        prefs = self.tv_prefs()
+        prefs = self.screen_prefs()
         state = load_state()
         if url.path == TV_SETTINGS:
             self.send(
@@ -456,23 +467,62 @@ class Handler(http.server.BaseHTTPRequestHandler):
         traffic = open_readonly(TRAFFIC_DB)
         try:
             if url.path == TV_FLOW:
-                back = urllib.parse.parse_qs(url.query).get("back", [""])[0]
-                tabs = {path for _key, path, _label in TV_TABS} | {"/"}  # (or the web's Home)
-                body = render_tv_flow(
-                    state,
-                    leases,
-                    conf_names,
-                    now,
-                    prefs,
-                    back if back in tabs else "/tv",
-                    current_weather(),
-                    LINE_BPS,
-                    traffic,
-                    line_speed(traffic),
-                    upcoming(now),
-                )
+                body = self.flow_body(url, "/tv", traffic)
             else:
                 body = render_tv(state, leases, conf_names, now, traffic, prefs)
+        finally:
+            if traffic is not None:
+                traffic.close()
+        self.send(200, body.encode(), "text/html; charset=utf-8")
+
+    def flow_body(
+        self, url: urllib.parse.SplitResult, home: str, traffic: sqlite3.Connection | None
+    ) -> str:
+        """Return Flow's page; its Back goes to the tab it came from, else ``home``."""
+        now = dt.datetime.now(dt.UTC)
+        back = urllib.parse.parse_qs(url.query).get("back", [""])[0]
+        return render_flow(
+            load_state(),
+            current_leases(now),
+            current_conf_names(),
+            now,
+            self.screen_prefs(),
+            back if back in {path for _key, path, _label in TV_TABS} | {"/"} else home,
+            current_weather(),
+            LINE_BPS,
+            traffic,
+            line_speed(traffic),
+            upcoming(now),
+        )
+
+    def move_to_flow(self, url: urllib.parse.SplitResult) -> None:
+        """Send a browser from /tv/flow, where Flow was, to /flow, with what it keeps.
+
+        Its cookies were sent only to /tv; /flow sends a browser that has none here first.
+        """
+        kept = {
+            FLOW_COOKIE: self.screen_prefs().flow,
+            SOUND_COOKIE: self.cookie_value(SOUND_COOKIE) and self.screen_prefs().sound,
+            ZEN_COOKIE: self.cookie_value(ZEN_COOKIE),
+        }
+        cookies = [
+            f"{name}={value}; Path={FLOW}; Secure; SameSite=Lax; Max-Age=31536000"
+            for name, value in kept.items()
+            if value
+        ]
+        self.redirect(FLOW + (f"?{url.query}" if url.query else ""), {"Set-Cookie": cookies})
+
+    def send_flow(self, url: urllib.parse.SplitResult) -> None:
+        """Serve Flow to whoever's signed in (a TV has its own, /tv/flow)."""
+        if not self.signed_in():
+            self.send_html(render_login())
+            return
+        if self.cookie_value(FLOW_COOKIE) not in FLOW_LOOKS:
+            self.redirect(TV_FLOW + (f"?{url.query}" if url.query else ""))
+            return
+        traffic = open_readonly(TRAFFIC_DB)
+        try:
+            body = self.flow_body(url, "/", traffic)
         finally:
             if traffic is not None:
                 traffic.close()
@@ -485,6 +535,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if url.path in {path for _key, path, _label in TV_TABS} | {TV_LIVE, TV_FLOW}:
             self.send_tv(url)
+            return
+        if url.path == FLOW:
+            self.send_flow(url)
             return
         if url.path == "/live.json":
             if not self.signed_in():
@@ -626,7 +679,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             theme, saver, look = fields.get("theme"), fields.get("saver"), fields.get("flow")
             sound = fields.get("sound")
             if not self.tv_allowed() or not (
-                theme in TV_THEMES
+                theme in SCREEN_THEMES
                 or saver in SAVER_CHOICES
                 or look in FLOW_LOOKS
                 or sound in SOUND_CHOICES
@@ -635,7 +688,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             cookie = (
                 f"{THEME_COOKIE}={theme}; Path=/"
-                if theme in TV_THEMES
+                if theme in SCREEN_THEMES
                 else f"{SAVER_COOKIE}={saver}; Path=/tv"
                 if saver in SAVER_CHOICES
                 else f"{FLOW_COOKIE}={look}; Path=/tv"
@@ -700,10 +753,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         mac = fields.get("mac", "").lower()
         action = fields.get("action", "")
         if path == "/device" and MAC_RE.match(mac) and action in DEVICE_ACTIONS:
-            name = fields.get("name", "")
+            name, kind = fields.get("name", ""), fields.get("kind", "")
             try:
                 _result, token = self.apply(
-                    path, fields, lambda state: apply_device_action(state, mac, action, name)
+                    path, fields, lambda state: apply_device_action(state, mac, action, name, kind)
                 )
             except ValueError as error:
                 self.send_message(400, str(error))

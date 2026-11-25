@@ -6,14 +6,17 @@ import html
 import sqlite3
 import urllib.parse
 import urllib.request
+from collections import Counter
 from typing import NamedTuple
 
 from curfew.config import APP_NAME, RECENT_DAYS
 from curfew.devices import (
     KIND_LABELS,
     MAX_NAME,
+    chosen_kind,
     device_kind,
     display_name,
+    guess_kind,
     guest_until,
     maker_text,
 )
@@ -28,6 +31,8 @@ from curfew.web.components import (
     fold,
     format_bytes,
     format_seen,
+    pick,
+    pick_form,
     post_form,
     router_notice,
     submit,
@@ -35,7 +40,7 @@ from curfew.web.components import (
     usage_cell,
 )
 from curfew.web.layout import chrome, page
-from curfew.web.pages.dhcp import pool_control
+from curfew.web.pages.dhcp import pool_pick
 from curfew.web.sky import sky_phase
 
 SORTS = {
@@ -178,7 +183,12 @@ def in_natural_order(
 
 
 def fact_items(
-    mac: str, name: str, lease: Lease | None, today: tuple[int, int] | None, now: dt.datetime
+    mac: str,
+    name: str,
+    record: dict,
+    lease: Lease | None,
+    today: tuple[int, int] | None,
+    now: dt.datetime,
 ) -> list[tuple[str, str]]:
     """Return a device's facts as (label, HTML): online, today, addresses, maker, type."""
     if lease and lease.online:
@@ -192,13 +202,14 @@ def fact_items(
         else "nothing yet"
     )
     private = " <span class=tag>private</span>" if is_private(mac) else ""
+    guessed = "" if chosen_kind(record) else " <small>(a guess)</small>"
     items = [
         ("Connection", online),
         ("Today", used),
         ("IP address", html.escape(lease.ip) if lease else "—"),
         ("MAC address", f'<span class="mono">{mac}</span>{private}'),
         ("Maker", html.escape(maker_text(mac))),
-        ("Type", f"{KIND_LABELS[device_kind(name, mac)]} <small>(a guess)</small>"),
+        ("Type", KIND_LABELS[device_kind(name, mac, record)] + guessed),
     ]
     if lease and lease.hostname and lease.hostname != name:
         items.append(("Calls itself", html.escape(lease.hostname)))
@@ -217,6 +228,7 @@ def fact_list(items: list[tuple[str, str]]) -> str:
 def facts(
     mac: str,
     name: str,
+    record: dict,
     lease: Lease | None,
     today: tuple[int, int] | None,
     first: tuple[int, bool] | None,
@@ -230,14 +242,14 @@ def facts(
         first_text = moment.strftime("%b %-d, %Y")
         if first[1]:
             first_text = f"{first_text} <small>or earlier (records start then)</small>"
-    items = fact_items(mac, name, lease, today, now)
+    items = fact_items(mac, name, record, lease, today, now)
     items.insert(2, ("First seen", first_text))
     return fact_list(items)
 
 
-def manage(state: dict, mac: str, status: str, lease: Lease | None) -> str:
+def manage(state: dict, mac: str, name: str, status: str, lease: Lease | None) -> str:
     """Return the device's controls: block or unblock, approve or let on as a guest,
-    allow, wake, and its profile."""
+    allow, wake, and its profile, type and pool."""
     if is_router(mac):
         return (
             '<p class="muted">The router itself. Its own internet use (updates, DNS, '
@@ -276,36 +288,35 @@ def manage(state: dict, mac: str, status: str, lease: Lease | None) -> str:
                 mac, "disallow" if allowed else "allow", "Revoke" if allowed else "Allow"
             )
         )
-    profile_id, profile = profile_for(state, mac)
-    options = "".join(
-        f'<option value="{pid}"{" selected" if pid == profile_id else ""}>'
-        f"{html.escape(other['name'])}</option>"
-        for pid, other in sorted(state["profiles"].items(), key=lambda item: item[1]["name"])
-    )
-    choose = (
-        post_form(
-            "/profile",
-            {"action": "add_member", "mac": mac},
-            '<label>Profile <select name="id" required>'
-            + ("" if profile else '<option value="" selected disabled>None</option>')
-            + f"{options}</select></label>"
-            + submit("Move" if profile else "Add"),
-        )
-        if state["profiles"]
-        else '<p class="muted">No profiles yet; make one on Home.</p>'
-    )
-    leave = (
-        post_form(
-            "/profile",
-            {"id": profile_id, "action": "remove_member", "mac": mac},
-            submit(f"Take out of {html.escape(profile['name'])}"),
-        )
-        if profile
-        else ""
-    )
+    picks = profile_pick(state, mac) + type_pick(mac, name, record) + pool_pick(state, mac, name)
     return (
-        f'<div class="controls">{"".join(buttons)}</div>'
-        f'<div class="controls">{choose}{leave}</div>'
+        f'<div class="controls device-actions">{"".join(buttons)}</div>'
+        f'<div class="picks">{picks}</div>'
+    )
+
+
+def profile_pick(state: dict, mac: str) -> str:
+    """Return the form that sets which profile a device is in, or none."""
+    if not state["profiles"]:
+        return '<p class="muted">No profiles yet; make one on Home.</p>'
+    profile_id, _profile = profile_for(state, mac)
+    by_name = sorted(state["profiles"].items(), key=lambda item: item[1]["name"].lower())
+    choices = [("", "None")] + [(pid, profile["name"]) for pid, profile in by_name]
+    return pick_form(
+        "/profile",
+        {"action": "set_profile", "mac": mac},
+        pick("Profile", "id", choices, profile_id or ""),
+    )
+
+
+def type_pick(mac: str, name: str, record: dict) -> str:
+    """Return the form that sets a device's type (by name), or leaves it to the guess (first)."""
+    by_label = sorted(KIND_LABELS.items(), key=lambda item: item[1].lower())
+    choices = [("", f"Automatic ({KIND_LABELS[guess_kind(name, mac)]})"), *by_label]
+    return pick_form(
+        "/device",
+        {"action": "type", "mac": mac},
+        pick("Type", "kind", choices, chosen_kind(record)),
     )
 
 
@@ -337,15 +348,14 @@ def device_row(
     more_id = "more-" + mac.replace(":", "")
     opened = (
         f'<tr class="dev-more" id="{more_id}" hidden><td colspan="{6 if show_profile else 5}">'
-        + fact_list(fact_items(mac, name, row.lease, today, now))
-        + manage(state, mac, row.status, row.lease)
-        + pool_control(state, mac, name)
+        + fact_list(fact_items(mac, name, row.record, row.lease, today, now))
+        + manage(state, mac, name, row.status, row.lease)
         + f'<p class="dev-page"><a href="/device?mac={mac}">Usage &amp; history →</a></p>'
         "</td></tr>"
     )
     return (
-        f'<tr class="dev-row" data-key="{mac}">'
-        f"{device_cell(name, mac, row.lease, rename_box(mac, name), info=False)}"
+        f'<tr class="dev-row" data-key="{mac}" data-kind="{device_kind(name, mac, row.record)}">'
+        f"{device_cell(name, mac, row.lease, row.record, rename_box(mac, name), info=False)}"
         f'<td class="seen detail">'
         f"{format_seen(row.lease.last_seen if row.lease else None, now)}</td>"
         f"{usage_cell(mac, today)}{profile_cell}"
@@ -472,7 +482,7 @@ def render_devices(
             aside=f'<span class="fold-note">{option_states}</span>',
         )
         + '<div class="tools"><label>Filter <input type="search" id="filter" '
-        f'placeholder="name, IP, MAC or profile"></label>{all_switch}'
+        f'placeholder="name, IP, MAC or profile"></label>{type_filter(rows)}{all_switch}'
         f'<span class="sort-links">Sort: {sort_links}</span></div>'
         + fold(
             "known", "Known devices", device_table(known, "None yet."), folds, aside=count(known)
@@ -488,6 +498,20 @@ def render_devices(
     )
     return page(
         f"Devices · {APP_NAME}", chrome("devices", body, sky_phase(state, now)), script=True
+    )
+
+
+def type_filter(rows: list[DeviceRow]) -> str:
+    """Return the menu that shows one type of device (app.js): the types listed, with how many."""
+    kinds = Counter(device_kind(row.name, row.mac, row.record) for row in rows)
+    options = "".join(
+        f'<option value="{kind}">{label} ({kinds[kind]})</option>'
+        for kind, label in sorted(KIND_LABELS.items(), key=lambda item: item[1].lower())
+        if kinds[kind]
+    )
+    return (
+        '<label>Type <select id="type-filter"><option value="">All types</option>'
+        f"{options}</select></label>"
     )
 
 

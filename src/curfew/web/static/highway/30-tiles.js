@@ -19,7 +19,8 @@
     made.width = Math.ceil(TILE * fine);
     made.height = Math.ceil(h * fine);
     var p = made.getContext('2d');
-    p.setTransform(fine, 0, 0, fine, 0, 0);
+    // Right to its last pixel: a part-filled one at its side or foot showed as a thin gap.
+    p.setTransform(made.width / TILE, 0, 0, made.height / h, 0, 0);
     p.clearRect(0, 0, TILE, h);
     if (ramp) {
       thin = thinning(ramp);
@@ -48,14 +49,25 @@
   }
   var KEEP = sharp ? 30000 : 10000;
   function sweepTiles(now) {
+    dropPictures(function (picture) { return now - picture.used > KEEP; });
+  }
+  // A dropped picture's memory is given back at once (a canvas of no size has none): left for
+  // the garbage collector it stayed the graphics chip's, and a TV that ran short of it drew 8
+  // frames a second till its app was started again.
+  function dropPictures(which) {
     [tiles, blends, riseSprites, bodies].forEach(function (cache) {
       Object.keys(cache).forEach(function (key) {
-        if (now - cache[key].used > KEEP) {
+        if (which(cache[key])) {
+          cache[key].canvas.width = cache[key].canvas.height = 0;
           delete cache[key];
         }
       });
     });
   }
+  function dropAllPictures() {
+    dropPictures(function () { return true; });
+  }
+  window.addEventListener('pagehide', dropAllPictures);
   // The wind leans what grows and sways it in gusts, the nearer the more: a tile of trees is
   // sheared about its foot. Buildings and rock stand still (not in SWAYS).
   var SWAYS = {woods: 1, copse: 1, hedge: 1, clifftop: 1, downs: 0.5, cacti: 0.15};
@@ -123,7 +135,18 @@
   function drawPart(picture, from, to, top, bottom, high, left, y) {
     var qx = picture.width / TILE, qy = picture.height / high;
     // A hair over its width, so no seam shows between tiles.
-    ctx.drawImage(picture, from * qx, top * qy, (to - from) * qx, (bottom - top) * qy, left + from, y + top, to - from + 0.5, bottom - top);
+    var head = outward(y + top, -1), foot = outward(y + bottom, 1);
+    ctx.drawImage(picture, from * qx, top * qy, (to - from) * qx, (bottom - top) * qy, left + from, head, to - from + 0.5, foot - head);
+  }
+  // The whole pixel past `y`, up (-1) or down (1). Two edges meeting inside a pixel each cover
+  // part of it, and what's behind them both shows through as a thin line: so each thing's edge
+  // goes to a whole pixel, over its neighbour's.
+  function outward(y, way) {
+    return (way < 0 ? Math.floor(y * k + 0.001) : Math.ceil(y * k - 0.001) + 1) / k;
+  }
+  // The nearest whole pixel, for strips side by side.
+  function onPixel(x) {
+    return Math.round(x * k) / k;
   }
   // In fog, a wash over each slot fading in from its top, so no edge shows.
   function fogOver(slot) {
@@ -158,7 +181,8 @@
       if (changes && joined > along && edge - JOIN / 2 < along + cols) {
         var join = rowJoin(next, slot, r, row[0], bottom, h, edge - JOIN / 2, fresh, now);
         var x = Math.round((edge - JOIN / 2 - along) * k) / k;
-        ctx.drawImage(join, x, top + row[0], JOIN, bottom - row[0]);
+        var head = outward(top + row[0], -1);
+        ctx.drawImage(join, x, head, JOIN, outward(top + bottom, 1) - head);
       }
     });
     fogOver(slot);
@@ -232,7 +256,7 @@
       if (cloud.shown < 0.01) {
         return;
       }
-      var x = ((cloud.x - odometer * cloud.rate - time / 1000 * 2 * (1 + flow.windX)) % 960 + 960) % 960 - 60;
+      var x = ((cloud.x - odometer * cloud.rate - time / 1000 * 0.8 * (1 + flow.windX)) % 960 + 960) % 960 - 60;
       var w = cloud.w, y = cloud.y;
       // Faded with alpha, not in the gradient, so the gradient stays cached.
       ctx.globalAlpha = cloud.shown;

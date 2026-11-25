@@ -10,15 +10,15 @@ from curfew.state import save_state
 from curfew.weather import Weather
 from curfew.web import auth, layout
 from curfew.web import server as web_server
-from curfew.web.pages.tv import (
+from curfew.web.pages.flow import (
+    FLOW_COOKIE,
     SAVER_COOKIE,
     SOUND_COOKIE,
     TV_FLOW,
     TV_FRAMES,
     TV_LIVE,
-    TV_SETTINGS,
-    render_tv,
 )
+from curfew.web.pages.tv import TV_SETTINGS, render_tv
 
 
 def test_the_tv_key_is_made_kept_and_replaced(tmp_path) -> None:
@@ -158,13 +158,16 @@ def test_the_screensaver_sound_is_off_unless_chosen(
     tv = tv_signed_in(monkeypatch, tmp_path, sandbox)
     _response, body = request("GET", TV_FLOW, signed_in=False, cookie=tv)
     assert 'data-sound="off"' in body
-    response, _ = request("POST", TV_SETTINGS, "sound=on", signed_in=False, cookie=tv)
+    response, _ = request("POST", TV_SETTINGS, "sound=full", signed_in=False, cookie=tv)
     cookie = response.getheader("Set-Cookie")
-    assert response.status == 303 and f"{SOUND_COOKIE}=on; Path=/tv;" in cookie
-    _response, body = request("GET", TV_FLOW, signed_in=False, cookie=f"{tv}; {SOUND_COOKIE}=on")
-    assert 'data-sound="on"' in body
+    assert response.status == 303 and f"{SOUND_COOKIE}=full; Path=/tv;" in cookie
+    # "on" is what full was, and a TV may keep it yet.
+    for kept, now in (("full", "full"), ("background", "background"), ("on", "full")):
+        cookie = f"{tv}; {SOUND_COOKIE}={kept}"
+        body = request("GET", TV_FLOW, signed_in=False, cookie=cookie)[1]
+        assert f'data-sound="{now}"' in body
     _response, body = request("GET", TV_SETTINGS, signed_in=False, cookie=tv)
-    assert "Screensaver sound" in body and "▲ on the screensaver turns it on, ▼ off" in body
+    assert "Screensaver sound" in body and "all but the engine" in body
     _response, body = request("GET", TV_FLOW, signed_in=False, cookie=tv)
     assert "<b>▲▼</b> sound" in body
 
@@ -193,13 +196,19 @@ def test_the_screensaver_draws_the_house_and_returns_to_its_tab(
     assert 'data-weather="{&quot;code&quot;: 0, &quot;temp&quot;: 4.2,' in body
     _response, body = request("GET", "/tv/flow?back=/devices", signed_in=False, cookie=tv)
     assert 'data-back="/tv"' in body  # not a TV tab: home instead
-    assert request("GET", "/tv/flow", signed_in=False)[0].status == 403
+    # Not signed in: the app says so, as it can't sign in; a browser gets the sign-in page.
+    app_agent = "Mozilla/5.0 (Linux; Android 9; AFTMM; wv) AppleWebKit/537.36"
+    response, body = request("GET", "/tv/flow", signed_in=False, agent=app_agent)
+    assert response.status == 403 and "isn't signed in" in text(body)
+    response, _ = request("GET", "/tv/flow?back=%2F", signed_in=False)
+    assert (response.status, response.getheader("Location")) == (303, "/flow?back=%2F")
+    assert 'action="/login"' in request("GET", "/flow?back=%2F", signed_in=False)[1]
 
 
 def test_the_screensaver_has_facts_the_house_and_the_internet_in_turn() -> None:
     """The house's own (devices online, the line's speed) between facts about the internet."""
     from curfew.web.pages.devices import collect_rows  # noqa: PLC0415
-    from curfew.web.pages.tv import INTERNET_FACTS, flow_facts  # noqa: PLC0415
+    from curfew.web.pages.flow import INTERNET_FACTS, flow_facts  # noqa: PLC0415
 
     state = make_state({MEMBER: {"name": "kid-ipad"}})
     rows, _private = collect_rows(state, {MEMBER: lease(MEMBER, "10.7.1.5")}, {}, NOW, False)
@@ -213,8 +222,6 @@ def test_the_screensaver_has_facts_the_house_and_the_internet_in_turn() -> None:
 
 def test_the_screensaver_look_is_kept_on_the_tv(server, monkeypatch, tmp_path, sandbox) -> None:
     """Space unless the TV keeps Simple (from Settings, or OK on the screensaver)."""
-    from curfew.web.pages.tv import FLOW_COOKIE  # noqa: PLC0415
-
     _app, request = server
     tv = tv_signed_in(monkeypatch, tmp_path, sandbox)
     monkeypatch.setattr(web_server, "block_rate", lambda: 0.25)
@@ -268,7 +275,7 @@ def test_a_read_only_account_sees_home_and_the_screensaver_only(
     assert '<nav class="primary"' not in body and 'class="tile"' in body
     assert '<a class="tile' not in body and 'href="/usage"' not in body
     assert 'action="/device"' not in body and 'action="/profile"' not in body
-    assert 'href="/tv/flow?back=%2F"' in body and 'action="/logout"' in body
+    assert 'href="/flow?back=%2F"' in body and 'action="/logout"' in body
     for path in ("/devices", "/network", f"/device?mac={MEMBER}", "/tv", "/tv/settings"):
         response, _ = request("GET", path, signed_in=False, cookie=viewer)
         assert (response.status, response.getheader("Location")) == (303, "/"), path
@@ -277,13 +284,42 @@ def test_a_read_only_account_sees_home_and_the_screensaver_only(
         "POST", "/device", f"mac={MEMBER}&action=block", signed_in=False, cookie=viewer
     )
     assert response.status == 403 and not app.state["devices"].get(MEMBER, {}).get("blocked")
-    response, body = request("GET", "/tv/flow?back=%2F", signed_in=False, cookie=viewer)
+    seen = f"{viewer}; {FLOW_COOKIE}=town"
+    response, body = request("GET", "/flow?back=%2F", signed_in=False, cookie=seen)
     assert response.status == 200 and 'data-back="/"' in body
     assert (
         request("GET", "/tv/live.json?devices=1", signed_in=False, cookie=viewer)[0].status == 200
     )
     # An admin still has every section.
     assert '<nav class="primary"' in request("GET", "/")[1]
+
+
+def test_flow_is_at_flow_for_whoever_is_signed_in(server, monkeypatch, tmp_path, sandbox) -> None:
+    """Not at /tv/flow, which is a TV's: that sends a browser on, with what it kept there."""
+    _app, request = server
+    tv = tv_signed_in(monkeypatch, tmp_path, sandbox)
+    kept = f"{FLOW_COOKIE}=highway; {SOUND_COOKIE}=on; curfew_zen=1"
+    # An old bookmark, or the first visit to /flow, which comes by way of it.
+    response, _ = request("GET", "/flow?back=%2F")
+    assert (response.status, response.getheader("Location")) == (303, "/tv/flow?back=%2F")
+    response, _ = request("GET", "/tv/flow?back=%2F", cookie=kept)
+    assert (response.status, response.getheader("Location")) == (303, "/flow?back=%2F")
+    cookies = response.headers.get_all("Set-Cookie")
+    moved = kept.replace("=on", "=full")  # (as it was called)
+    assert [cookie.split(";")[0] for cookie in cookies] == moved.split("; ")
+    assert all("Path=/flow;" in cookie for cookie in cookies)
+    # With none kept, the theme still is, or the two would send it to and fro.
+    response, _ = request("GET", "/tv/flow")
+    assert response.getheader("Set-Cookie").startswith(f"{FLOW_COOKIE}=space; Path=/flow;")
+    response, body = request("GET", "/flow?back=%2F", cookie=kept)
+    assert response.status == 200 and 'data-look="highway"' in body and 'data-sound="full"' in body
+    assert 'data-back="/"' in body and "<title>Flow · curfew</title>" in body
+    assert 'data-back="/"' in request("GET", "/flow?back=/evil", cookie=kept)[1]
+    # A TV keeps its own address, though it's signed in too; its key doesn't open /flow.
+    response, body = request("GET", "/tv/flow", cookie=tv)
+    assert response.status == 200 and 'data-back="/tv"' in body
+    body = request("GET", "/flow", signed_in=False, cookie=f"{tv}; {kept}")[1]
+    assert 'id="flow"' not in body and 'action="/login"' in body
 
 
 def test_the_highway_is_served_joined_from_its_parts() -> None:
@@ -304,12 +340,14 @@ def test_the_screensaver_reports_its_frames(server, monkeypatch, tmp_path, sandb
         web_server, "keep_report", lambda report, address: frames.keep_report(report, address, log)
     )
     report = {"look": "highway", "fps": 30, "frames": 1790, "gap95": 41.2, "app": True}
+    report |= {"tick": 41.7, "keys": "ArrowUp " * 40}
     report["evil"] = "x" * 900
     body = "report=" + urllib.parse.quote(json.dumps(report))
     assert request("POST", TV_FRAMES, body, signed_in=False, cookie=tv)[0].status == 204
     kept = json.loads(log.read_text().splitlines()[-1])
     assert kept["look"] == "highway" and kept["fps"] == 30
     assert kept["gap95"] == 41.2 and kept["app"] is True
+    assert kept["tick"] == 41.7 and len(kept["keys"]) == 120
     assert "evil" not in kept and "at" in kept and "from" in kept
     assert request("POST", TV_FRAMES, body, signed_in=False)[0].status == 401
     garbled = request("POST", TV_FRAMES, "report=nonsense", signed_in=False, cookie=tv)

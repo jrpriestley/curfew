@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from curfew.devices import KIND_LABELS
 from curfew.dhcp import place_name
 from curfew.schedules import BONUS_CHOICES, PAUSE_CHOICES
 from curfew.web.components import post_form, submit
@@ -102,6 +103,7 @@ DEVICE_WORDS = {
     "guest": "Let {name} on for a day",
     "forget": "Forgot {name}",
     "rename": "Renamed {name} to {new}",
+    "type": "Set {name}'s type to {kind}",
 }
 
 
@@ -131,7 +133,8 @@ def describe(path: str, fields: dict[str, str], state: dict, name_of: Callable[[
     mac = fields.get("mac", "").lower()
     new = fields.get("name", "").strip()
     if path == "/device":
-        return DEVICE_WORDS[action].format(name=name_of(mac), new=new or "its own name")
+        kind = KIND_LABELS.get(fields.get("kind", ""), "automatic")
+        return DEVICE_WORDS[action].format(name=name_of(mac), new=new or "its own name", kind=kind)
     if path == "/dhcp":
         return dhcp_words(action, fields, state, name_of(mac) if mac else "")
     profile = state["profiles"].get(fields.get("id", ""), {}).get("name", "")
@@ -151,8 +154,9 @@ def describe(path: str, fields: dict[str, str], state: dict, name_of: Callable[[
         "end_bonus": f"Revoked {profile}'s bonus time",
         "add_site": f"Blocked {fields.get('preset') or fields.get('site', 'sites')} for {profile}",
         "remove_site": f"Unblocked {fields.get('site', 'a site')} for {profile}",
-        "add_member": f"Put {name_of(mac)} in {profile}",
-        "remove_member": f"Took {name_of(mac)} out of {profile}",
+        "set_profile": f"Put {name_of(mac)} in {profile}"
+        if profile
+        else f"Took {name_of(mac)} out of its profile",
         "add_schedule": f"Added a schedule to {profile}",
         "remove_schedule": f"Removed a schedule from {profile}",
     }

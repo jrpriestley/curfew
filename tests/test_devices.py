@@ -1,5 +1,6 @@
 """Device identity: leases, dhcpd.conf names, makers, types, saved state."""
 
+import pytest
 from helpers import CONF, KIDS, LEASES, MEMBER, NOW, lease, make_state
 
 from curfew import devices
@@ -68,6 +69,21 @@ def test_device_kind_guesses_from_name() -> None:
     assert devices.device_kind("upstairs-tv", MEMBER) == "tv"
     assert devices.device_kind("xbox-series-x", MEMBER) == "console"
     assert devices.device_kind("", "02:00:00:00:00:01") == "device"
+
+
+def test_a_type_set_by_hand_wins_over_the_guess() -> None:
+    """It shows wherever the guess would, until it's set back to automatic."""
+    state = make_state({MEMBER: {"name": "Sams-iPad"}})
+    devices.apply_device_action(state, MEMBER, "type", kind="computer")
+    record = state["devices"][MEMBER]
+    assert devices.device_kind("Sams-iPad", MEMBER, record) == "computer"
+    assert record["name"] == "Sams-iPad"
+    with pytest.raises(ValueError, match="Unknown type"):
+        devices.apply_device_action(state, MEMBER, "type", kind="spaceship")
+    assert record["kind"] == "computer"
+    devices.apply_device_action(state, MEMBER, "type", kind="")
+    assert "kind" not in record
+    assert devices.device_kind("Sams-iPad", MEMBER, record) == "tablet"
 
 
 def test_state_round_trip(tmp_path) -> None:

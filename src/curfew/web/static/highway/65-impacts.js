@@ -4,7 +4,7 @@
   // skyline and the hills. On impact: a fireball, sparks and dust thrown up, a crater left
   // burning and smoking, a small flash over the screen, a boom. Everything is kept in its
   // layer's own units (`at`, at its `rate`) so it scrolls with what it hit.
-  var HIT_LEFT = 0.45, FAR_RATE = 0.07, NEAR_RATE = 0.16, SKYLINE_FOOT = RT - 66;
+  var HIT_LEFT = 0.45, SKYLINE_FOOT = RT - 66;
   var FIRE = [255, 150, 60], HOT = [255, 236, 190], EMBER = [255, 110, 40];
   var rocks = [], bits = [], craters = [], smashed = {}, rockDue = 2;
   function depthY(depth) {
@@ -15,7 +15,7 @@
   }
   // A tower in sight still standing, for a rock to hit (as drawRises places them).
   function standingTower() {
-    var rise = RISES.asteroids, layer = odometer * FAR_RATE, found = [];
+    var rise = RISES.asteroids, layer = odometer * RISE_RATE, found = [];
     for (var m = Math.floor((layer + 40) / rise.gap); m <= Math.floor((layer + cols - 40) / rise.gap); m += 1) {
       var seed = seeded(m * 7919 + rise.salt)();
       var at = m * rise.gap + seed * rise.gap * 0.35;
@@ -33,10 +33,10 @@
     if (tower) {
       // Its ruin made now, while the rock falls, so the impact's frame makes nothing.
       riseSprite('asteroids-ruined' + tower.m, RISES.asteroidsHit, tower.seed, Math.min(k, 2)).used = Date.now();
-      rock = {tower: tower.m, depth: 0, rate: FAR_RATE, at: tower.at, y: tower.y};
+      rock = {tower: tower.m, depth: 0, rate: RISE_RATE, at: tower.at, y: tower.y};
     } else {
       var depth = Math.random();
-      var rate = FAR_RATE + (NEAR_RATE - FAR_RATE) * depth;
+      var rate = bandRate(depthY(depth));
       rock = {depth: depth, rate: rate, at: odometer * rate + cols * (0.1 + 0.85 * Math.random()), y: depthY(depth)};
     }
     rock.size = (1 + Math.random()) * (0.7 + 0.6 * rock.depth);
@@ -147,7 +147,8 @@
       return;
     }
     rock.heard = true;
-    var left = rock.fall - rock.age, loud = Math.min(0.9, 0.25 + 0.4 * (0.4 + 0.6 * rock.depth) * rock.size), pan = layerX(rock) / cols * 2 - 1;
+    var x = layerX(rock), left = rock.fall - rock.age, pan = x / cols * 2 - 1;
+    var loud = Math.min(0.9, 0.25 + 0.4 * (0.4 + 0.6 * rock.depth) * rock.size) * heardAt(x);
     flow.sound.fall(1.1 * loud, left, pan);
     flow.sound.shot('impact', loud, left, pan);
     flow.sound.shot('debris', 0.6 * loud, left + 0.33, pan);

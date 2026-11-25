@@ -19,7 +19,7 @@
     var t = time / 1000;
     for (var i = 0; i < (sharp ? 40 : 18); i += 1) {
       var r = seeded(i * 7919 + 131), rise = 8 + r() * 14;
-      var x = ((r() * 900 - odometer * 0.1 + Math.sin(t * 0.7 + i) * 6) % cols + cols) % cols;
+      var x = ((r() * 900 - odometer * (0.4 + 0.2 * r()) + Math.sin(t * 0.7 + i) * 6) % cols + cols) % cols;
       var y = RT - ((t * rise + r() * 130) % 130), fade = Math.min(1, (y - (RT - 130)) / 30);
       rect(ctx, x, y, 0.7, 0.7, css([255, 150 + 80 * r(), 60], 0.8 * hell * fade));
     }
@@ -172,29 +172,29 @@
       speed: 13 + 6 * Math.random(), sway: 6.2832 * Math.random(),
     };
   }
+  // A softly rounded square of rosy light, deeper toward its foot, its face three dots, with
+  // straight tendrils under it drawn up and let down in turn as it drifts.
   function spirit(x, y, size, pulse, t) {
+    var half = size * 0.8, top = y - half, foot = y + half, corner = size * 0.26;
     ctx.globalCompositeOperation = 'lighter';
-    glow(x, y, size * 2.2, [255, 200, 220], 0.35 * pulse);
+    glow(x, y, size * 2.2, [255, 170, 205], 0.35 * pulse);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = css([246, 236, 244], 0.85);
-    ctx.beginPath();
-    ctx.ellipse(x, y, size, size * 0.75, 0, Math.PI, 0);
-    ctx.fill();
-    // Its tendrils trailing.
-    ctx.strokeStyle = css([240, 220, 236], 0.6);
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
     for (var n = 0; n < 5; n += 1) {
-      var tx = x - size * 0.8 + n * size * 0.4;
-      ctx.moveTo(tx, y);
-      for (var d = 1; d <= 4; d += 1) {
-        ctx.lineTo(tx + Math.sin(t * 2.4 + n + d) * 1.4, y + d * size * 0.35);
-      }
+      var long = size * (1 + 0.35 * Math.sin(t * 1.5 + n * 1.9));
+      rect(ctx, x - half * 0.78 + n * half * 0.39 - 0.35, foot - 0.5, 0.7, long, css([255, 176, 206], 0.6));
     }
-    ctx.stroke();
-    // Its heart, a glow within.
-    ctx.fillStyle = css([170, 60, 90], 0.5);
+    var body = ctx.createLinearGradient(0, top, 0, foot);
+    body.addColorStop(0, css([255, 222, 232], 0.82));
+    body.addColorStop(1, css([226, 130, 184], 0.72));
+    ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.ellipse(x, y - size * 0.3, size * 0.35, size * 0.18, 0, 0, 6.2832);
+    ctx.moveTo(x - half + corner, top);
+    ctx.arcTo(x + half, top, x + half, foot, corner);
+    ctx.arcTo(x + half, foot, x - half, foot, corner);
+    ctx.arcTo(x - half, foot, x - half, top, corner);
+    ctx.arcTo(x - half, top, x + half, top, corner);
     ctx.fill();
+    [[-0.34, -0.16, 0.11], [0.34, -0.16, 0.11], [0, 0.34, 0.16]].forEach(function (dot) {
+      circle(ctx, x + dot[0] * half, y + dot[1] * half, dot[2] * half, '#5a1c3c');
+    });
   }

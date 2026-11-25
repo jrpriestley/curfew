@@ -1,14 +1,14 @@
   // ------------------------------------------------------------- the warzone --
   // Great guns in the middle distance (at the hills' rate), about one in sight at a time:
   // a stepped bunker, an armoured turret, a banded barrel raised on a ram. Every few seconds
-  // one charges (bands and vents brightening, the whole gun trembling) and fires a laser
+  // one charges (bands and vents brightening) and fires a laser
   // pulse into space for PULSE seconds: the barrel slams back and the gun pitches up and
-  // sinks on its footing, braced and shaking while the pulse lasts, then eases back. A shot
+  // is braced back while the pulse lasts, then eases back as steam bursts from its vents. A shot
   // in sight flashes the whole screen a little (`smallFlash`), the light lingering faintly
   // while it fires, and is heard.
   var smallFlash = 0, gunLast = {}, gunCharging = {};
   var GUN_LENGTH = 96, PIVOT_X = 10, PIVOT_Y = -54;
-  var CHARGE = 1.6, PULSE = 2.4, PULSE_FADE = 0.6, GUN_SETTLE = 1.6;
+  var CHARGE = 1.6, PULSE = 2.4, PULSE_FADE = 0.6, GUN_SETTLE = 1.6, COOLS = 2.6;
   // Cyan or red, by the gun.
   var LASERS = [[150, 230, 255], [255, 96, 72]];
   function drawGuns(time) {
@@ -35,22 +35,16 @@
       if (inSight && gun.power > 0) {
         smallFlash = Math.max(smallFlash, 0.05 * gun.power);
       }
-      // Its shot asked for as it charges, so that it's heard as it fires.
-      if (flow.sound && inSight && gun.charge > 0 && gun.charge < 0.5 && !gunCharging[m]) {
-        var until = CHARGE * (1 - gun.charge);
-        [['charge', 0.2, until - CHARGE], ['cannon', 0.6, until], ['beam', 0.2, until], ['hum', 0.28, until]].forEach(function (part) {
-          flow.sound.shot(part[0], part[1], part[2], x / cols * 2 - 1);
-        });
+      if (flow.sound && gun.charge > 0 && gun.charge < 0.5 && !gunCharging[m]) {
+        hearGun(x, CHARGE * (1 - gun.charge), velocity * rate);
       }
       gunCharging[m] = gun.charge > 0;
       gunLast[m] = gun.phase;
-      x += gun.shakeX;
-      foot += gun.sink + gun.shakeY;
       ctx.save();
       ctx.translate(x, foot);
       ctx.scale(gun.way, 1);
       gunBunker(paint, gun);
-      gunTurret(paint, Math.max(gun.charge, gun.power));
+      gunTurret(paint, gun, t);
       gunBarrel(paint, gun);
       ctx.globalCompositeOperation = 'lighter';
       var blink = Math.sin(t * 3 + seed * 20) > 0.7 ? 1 : 0.15;
@@ -60,17 +54,33 @@
       gunShot(x, foot, gun, m, dim, t);
     }
   }
-  // Where a gun is in its cycle (phase 0 is the shot) and how that moves it: trembling as
-  // it charges, slammed back and pitched up as it fires, braced and shaking through the
-  // pulse, then easing back on its ram.
+  // Its shot asked for as it charges, so that it's heard as it fires (`until` seconds on), from
+  // where it will have scrolled to by then, or by halfway through its pulse.
+  function hearGun(x, until, scroll) {
+    var fires = x - scroll * until, halfway = fires - scroll * PULSE / 2;
+    [['charge', 0.2, until - CHARGE, x], ['cannon', 0.6, until, fires], ['beam', 0.2, until, halfway], ['hum', 0.28, until, halfway],
+      ['vent', 0.34, until + VENT, fires - scroll * VENT]].forEach(function (part) {
+      var loud = part[1] * heardAt(part[3]);
+      if (loud > 0.01) {
+        flow.sound.shot(part[0], loud, part[2], part[3] / cols * 2 - 1);
+      }
+    });
+  }
+  // Where a gun is in its cycle (phase 0 is the shot) and how that moves its barrel, and only
+  // that: hunting for a target and settling on it, following it as it charges,
+  // slammed back and pitched up as it fires, braced through the pulse, then easing back on
+  // its ram.
   function aimGun(seed, t) {
-    var gun = {way: seed < 0.4 ? -1 : 1, lift: 0.62 + seed * 0.3, laser: LASERS[seed > 0.62 ? 0 : 1], seed: seed};
-    var period = 7 + seed * 5, phase = (t + seed * 13) % period;
+    var gun = {way: seed < 0.4 ? -1 : 1, laser: LASERS[seed > 0.62 ? 0 : 1], seed: seed};
+    var period = 10 + seed * 4, phase = (t + seed * 13) % period;
     gun.phase = phase;
+    seekTarget(gun, Math.floor((t + seed * 13) / period), phase, period);
     gun.charge = phase > period - CHARGE ? (phase - (period - CHARGE)) / CHARGE : 0;
     gun.power = phase < PULSE ? Math.min(1, (PULSE - phase) / PULSE_FADE) : 0;
     var firing = phase < PULSE;
     var after = phase - PULSE;
+    // Heated by the pulse, over what's left from the one before.
+    gun.heat = Math.max(firing ? Math.pow(phase / PULSE, 0.6) : 0, Math.exp(-Math.max(0, firing ? after + period : after) / COOLS));
     if (firing) {
       gun.recoil = 10 + 5 * Math.exp(-phase * 8);
     } else if (after < GUN_SETTLE) {
@@ -78,13 +88,29 @@
     } else {
       gun.recoil = 0;
     }
-    var kick = firing ? Math.exp(-phase * 4) : 0;
-    gun.lift += 0.07 * kick;
-    gun.sink = 1.6 * kick;
-    var tremble = 0.5 * gun.charge + 0.6 * gun.power;
-    gun.shakeX = Math.sin(t * 83 + seed * 7) * tremble;
-    gun.shakeY = Math.sin(t * 71 + seed * 11) * tremble * 0.6;
+    gun.lift += firing ? 0.07 * Math.exp(-phase * 4) : 0;
     return gun;
+  }
+  // Its aim: where it last shot till it's settled, then swung in stages, a look and a pause at
+  // each of SEEKS, to its next target, far off and out of sight, which it follows as it drifts.
+  var SEEKS = 3, DRIFT = 0.018;
+  function seekTarget(gun, n, phase, period) {
+    var from = PULSE + GUN_SETTLE, locked = period - CHARGE - 0.5;
+    var leg = (phase - from) / (locked - from) * SEEKS, at = Math.max(0, Math.min(SEEKS - 1, Math.floor(leg)));
+    function stop(i) {
+      if (i === 0) {
+        return 0.5 + 0.5 * flow.hash('gun' + gun.seed + '|' + n);
+      }
+      if (i === SEEKS) {
+        return 0.5 + 0.5 * flow.hash('gun' + gun.seed + '|' + (n + 1));
+      }
+      return 0.42 + 0.66 * flow.hash('seek' + gun.seed + '|' + n + '|' + i);
+    }
+    // Where the target will be when it's shot; before then it's on its way there.
+    var next = stop(SEEKS);
+    gun.seeking = phase > from && phase < locked;
+    gun.lift = leg <= 0 ? stop(0) : leg >= SEEKS ? next + DRIFT * (phase - period)
+      : stop(at) + ((at === SEEKS - 1 ? next + DRIFT * (locked - period) : stop(at + 1)) - stop(at)) * flow.smoothstep((leg - at) / 0.6);
   }
   // Stepped and dark, vents glowing with heat as it charges.
   function gunBunker(paint, gun) {
@@ -120,7 +146,7 @@
       rect(ctx, vx + 0.5, -21.3, 7, 1.2, css([255, 120 + 60 * charge, 40], 0.5 + 0.5 * heat));
     });
   }
-  function gunTurret(paint, charge) {
+  function gunTurret(paint, gun, t) {
     ctx.fillStyle = paint.steel;
     ctx.fillRect(-20, -38, 40, 10);
     ctx.fillStyle = paint.dark;
@@ -143,9 +169,12 @@
     ctx.moveTo(10, -66.4);
     ctx.lineTo(11, -36);
     ctx.stroke();
-    // Its sight, lit as it charges.
+    // Its sight: a light running to and fro while it hunts, all lit once it has its target.
     rect(ctx, -28, -50, 12, 3, '#141218');
-    rect(ctx, -27, -49.2, 10, 1.4, css([255, 60, 40], 0.5 + 0.5 * charge));
+    rect(ctx, -27, -49.2, 10, 1.4, css([255, 60, 40], gun.seeking ? 0.25 : 1));
+    if (gun.seeking) {
+      rect(ctx, -23.5 + 3.5 * Math.sin(t * 5), -49.2, 3, 1.4, '#ff6a50');
+    }
   }
   // Raised on its pivot and slammed back as it fires; a heavy jacket at the breech.
   function gunBarrel(paint, gun) {
@@ -182,7 +211,44 @@
     rect(ctx, L - 2, -7.5, 14, 15, paint.dark);
     rect(ctx, L + 2, -7.5, 1.4, 15, '#141218');
     rect(ctx, L + 7, -7.5, 1.4, 15, '#141218');
+    hotBarrel(gun.heat);
     ctx.restore();
+  }
+  // Steel's glow by how hot it is, 0 to 1: none, a dull red, red, orange.
+  function hotSteel(heat) {
+    var red = Math.min(1, heat / 0.55), orange = Math.max(0, (heat - 0.55) / 0.45);
+    return css(blend(blend([96, 8, 4], [232, 36, 14], red), [255, 138, 52], orange), 0.95 * Math.min(1, heat * 2.2));
+  }
+  // The barrel red hot from its pulse, most at the muzzle and least by its jacket, cooling
+  // from there outward.
+  function hotBarrel(heat) {
+    if (heat < 0.03) {
+      return;
+    }
+    var L = GUN_LENGTH, along = ctx.createLinearGradient(20, 0, L + 12, 0);
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (at) {
+      along.addColorStop(at, hotSteel(heat * (0.12 + 0.88 * at)));
+    });
+    ctx.fillStyle = along;
+    ctx.beginPath();
+    ctx.moveTo(20, -6);
+    ctx.lineTo(L - 2, -4.7);
+    ctx.lineTo(L - 2, -7.5);
+    ctx.lineTo(L + 12, -7.5);
+    ctx.lineTo(L + 12, 7.5);
+    ctx.lineTo(L - 2, 7.5);
+    ctx.lineTo(L - 2, 4.7);
+    ctx.lineTo(20, 6);
+    ctx.closePath();
+    ctx.fill();
+    // Round still: hottest along its middle, its underside in shadow.
+    rect(ctx, 20, 2.6, L - 8, 3.4, 'rgba(20, 0, 0, 0.28)');
+    ctx.globalCompositeOperation = 'lighter';
+    rect(ctx, 34, -1.6, L - 26, 2, css([255, 150, 70], 0.28 * heat * heat));
+    [[0.55, 12, 0.22], [0.8, 16, 0.32], [1.02, 20, 0.42]].forEach(function (spot) {
+      glow(spot[0] * L, 0, spot[1], [255, 70, 24], spot[2] * heat);
+    });
+    ctx.globalCompositeOperation = 'source-over';
   }
   // The charge, the pulse and its smoke, in the road's units from where the muzzle is now.
   function gunShot(x, foot, gun, m, dim, t) {
@@ -198,6 +264,37 @@
     if (phase < 1.4) {
       muzzleSmoke(mx, my, dx, dy, phase / 1.4, m, dim);
     }
+    if (phase > VENT && phase < VENT + VENTING + STEAM_LASTS) {
+      steamBurst(x, foot, gun, dim);
+    }
+  }
+  // Its pressure let go as the pulse ends (VENT into it): steam shot out of it for VENTING
+  // seconds, hard at first, from both sides of its jacket, the turret's back and the bunker's
+  // vents; each puff of it slowed by the air, spreading, rising and blown off over STEAM_LASTS.
+  var VENT = PULSE - 0.25, VENTING = 1.6, STEAM_LASTS = 3, STEAM_PUFFS = sharp ? 15 : 9;
+  function steamBurst(x, foot, gun, dim) {
+    var ca = Math.cos(gun.lift), sa = Math.sin(gun.lift), steam = smokeColour(blend([238, 241, 246], [74, 80, 96], dim));
+    // Each jet: from where, which way, how far, and how big its puffs get, facing right.
+    var jets = [
+      {x: PIVOT_X + 12 * ca - 9 * sa, y: PIVOT_Y - 12 * sa - 9 * ca, dx: -sa - 0.25 * ca, dy: -ca + 0.25 * sa, far: 118, big: 38},
+      {x: PIVOT_X + 14 * ca + 9 * sa, y: PIVOT_Y - 14 * sa + 9 * ca, dx: sa + 0.2 * ca, dy: ca * 0.5 - 0.2 * sa, far: 92, big: 32},
+      {x: -34, y: -50, dx: -1, dy: -0.22, far: 128, big: 40},
+      {x: -52, y: -10, dx: -1, dy: -0.1, far: 78, big: 26},
+      {x: 54, y: -10, dx: 1, dy: -0.1, far: 78, big: 26},
+    ];
+    jets.forEach(function (jet, j) {
+      for (var n = 0; n < STEAM_PUFFS; n += 1) {
+        var out = n / STEAM_PUFFS, age = gun.phase - VENT - out * VENTING;
+        if (age <= 0 || age >= STEAM_LASTS) {
+          continue;
+        }
+        var a = flow.hash('puff' + j + '|' + n), b = flow.hash('wisp' + j + '|' + n), push = 1 - 0.5 * out;
+        var gone = 1 - Math.exp(-age * 3.2), far = jet.far * push * (0.75 + 0.4 * a) * gone, wide = (b - 0.5) * far * 0.34;
+        var px = jet.x + jet.dx * far - jet.dy * wide, py = jet.y + jet.dy * far + jet.dx * wide - 9 * age * age;
+        var size = 4 + jet.big * (0.7 + 0.5 * b) * Math.sqrt(gone) * (0.45 + 0.3 * age);
+        glow(x + gun.way * px + flow.windX * 16 * age * age, Math.min(foot, foot + py), size, steam, 0.8 * push * Math.pow(1 - age / STEAM_LASTS, 1.4));
+      }
+    });
   }
   // Up out of sight: a wide glow round a white-hot core, shimmering, thinning as it ends.
   function laserPulse(mx, my, dx, dy, gun, t) {
@@ -260,7 +357,7 @@
       ctx.globalCompositeOperation = 'source-over';
       if (c.fire <= 0 && c.x > 20 && c.x < cols - 20) {
         c.fire = c.heavy ? 1.4 : 0.5 + Math.random() * 1.2;
-        strikes.push({x0: x, y0: y + 2, x1: x + c.way * (20 + Math.random() * 60), y1: RT - 62 - Math.random() * 12, age: 0});
+        strikes.push({x0: x, y0: y + 2, x1: x + c.way * (20 + Math.random() * 60), y1: RT - 56 - Math.random() * 12, age: 0, from: odometer});
       }
     });
     strikes = strikes.filter(function (b) { return b.age < 5; });
@@ -299,6 +396,9 @@
   }
   function drawStrike(b, seconds, dim) {
     b.age += seconds;
+    // What it struck goes by with the ground there.
+    b.x1 -= (odometer - b.from) * bandRate(b.y1);
+    b.from = odometer;
     var f = Math.min(1, b.age / 0.25), bx = b.x0 + (b.x1 - b.x0) * f, by = b.y0 + (b.y1 - b.y0) * f;
     ctx.globalCompositeOperation = 'lighter';
     if (b.age < 0.3) {
@@ -321,7 +421,7 @@
   }
   // Searchlights sweeping slowly over the sky from among the city's towers; faint by day.
   function drawSearchlights(time) {
-    var rate = 0.07, layer = odometer * rate, t = time / 1000, strength = 0.15 + 0.5 * Math.min(1, light.night * 1.6);
+    var rate = RISE_RATE, layer = odometer * rate, t = time / 1000, strength = 0.15 + 0.5 * Math.min(1, light.night * 1.6);
     ctx.globalCompositeOperation = 'lighter';
     for (var m = Math.floor((layer - 60) / 90); m <= Math.floor((layer + cols + 60) / 90); m += 1) {
       var seed = seeded(m * 7919 + 113)(), at = m * 90 + seed * 50;

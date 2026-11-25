@@ -2,7 +2,10 @@
 
 import ctypes
 import ctypes.util
+import hashlib
 import hmac
+import json
+import os
 import secrets
 import threading
 import time
@@ -52,14 +55,44 @@ class Shadow:
         return bool(computed) and hmac.compare_digest(computed.decode(), stored)
 
 
-class Sessions:
-    """In-memory login sessions and per-address failure lockout."""
+def _hashed(token: str | None) -> str:
+    return hashlib.sha256((token or "").encode()).hexdigest()
 
-    def __init__(self) -> None:
-        """Start with no sessions."""
+
+class Sessions:
+    """Login sessions and per-address failure lockout.
+
+    The sessions are kept in ``path`` (when given), so a restart (every update) doesn't sign
+    everyone out: only each token's hash, so the file can't be used to sign in. Failures are
+    kept in memory only.
+    """
+
+    def __init__(self, path: Path | None = None) -> None:
+        """Start with the sessions kept, if any."""
         self.lock = threading.Lock()
-        self.tokens: dict[str, tuple[float, str]] = {}  # token -> expiry, who signed in
+        self.path = path
+        self.tokens: dict[str, tuple[float, str]] = {}  # token's hash -> expiry, who signed in
         self.failures: dict[str, list[float]] = {}
+        try:
+            kept = json.loads(path.read_text()) if path else {}
+            now = time.time()
+            self.tokens = {
+                key: (float(at), str(who)) for key, (at, who) in kept.items() if at > now
+            }
+        except (OSError, ValueError, TypeError):
+            self.tokens = {}
+
+    def save(self) -> None:
+        """Write the sessions out, readable by root alone (called with the lock held)."""
+        if self.path is None:
+            return
+        try:
+            spare = self.path.with_suffix(".tmp")
+            spare.write_text(json.dumps(self.tokens))
+            os.chmod(spare, 0o600)
+            os.replace(spare, self.path)
+        except OSError:
+            pass  # then they last till the next restart, as they always did
 
     def create(self, user: str = "") -> str:
         """Return a new session token for ``user`` (and forget expired ones)."""
@@ -67,15 +100,15 @@ class Sessions:
         now = time.time()
         with self.lock:
             self.tokens = {key: kept for key, kept in self.tokens.items() if kept[0] > now}
-            self.tokens[token] = (now + SESSION_SECONDS, user)
+            self.tokens[_hashed(token)] = (now + SESSION_SECONDS, user)
+            self.save()
         return token
 
     def user(self, token: str | None) -> str | None:
         """Return who a live session token belongs to, or None."""
         with self.lock:
-            expiry, user = self.tokens.get(token or "", (0.0, ""))
+            expiry, user = self.tokens.get(_hashed(token), (0.0, ""))
             if expiry < time.time():
-                self.tokens.pop(token or "", None)
                 return None
             return user
 
@@ -86,7 +119,8 @@ class Sessions:
     def end(self, token: str | None) -> None:
         """Forget a session token."""
         with self.lock:
-            self.tokens.pop(token or "", None)
+            if self.tokens.pop(_hashed(token), None):
+                self.save()
 
     def locked_out(self, address: str) -> bool:
         """Return True if this address failed too often recently."""

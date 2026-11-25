@@ -63,12 +63,25 @@ def test_devices_page_offers_the_right_actions() -> None:
     shown = text(page)
     assert "10.7.1.9" in shown and plain in shown  # IP and MAC are on the page (opened row)
     # Each row opens (its ▸) to a hidden row holding its facts and controls; no ⓘ.
-    row, opened = page.split(f'<tr class="dev-row" data-key="{plain}">')[1].split("</tr>", 1)
+    row, opened = page.split(f'<tr class="dev-row" data-key="{plain}"')[1].split("</tr>", 1)
     assert f'aria-controls="more-{plain.replace(":", "")}"' in row and "info-btn" not in row
     assert 'class="dev-more"' in opened.split("</tr>")[0] and " hidden>" in opened
     assert "/device" in opened.split("</tr>")[0] and "Block" in opened.split("</tr>")[0]
     # The private-address switch is on, so it offers to turn off.
     assert {"block_private": "off"} in [form["fields"] for form in forms(page)]
+
+
+def test_the_device_list_offers_its_types_to_filter_by() -> None:
+    """Only the types listed, by name with how many; each row carries its own, set or guessed."""
+    phones, tv = ("a8:bb:cc:dd:ee:01", "a8:bb:cc:dd:ee:02"), "a8:bb:cc:dd:ee:03"
+    names = {phones[0]: {"name": "mums-iphone"}, phones[1]: {"name": "odd", "kind": "phone"}}
+    state = make_state(names | {tv: {"name": "kitchen-tv"}})
+    leases = {mac: lease(mac) for mac in (*phones, tv)}
+    page = devices_page.render_devices(state, leases, {}, True, False, NOW)
+    menu = page.split('<select id="type-filter">')[1].split("</select>")[0]
+    assert re.findall(r">([^<]+)</option>", menu) == ["All types", "Phone (2)", "TV/streamer (1)"]
+    assert f'data-key="{phones[1]}" data-kind="phone"' in page
+    assert f'data-key="{tv}" data-kind="tv"' in page
 
 
 def test_devices_split_into_unknown_and_known_folds() -> None:
@@ -193,7 +206,7 @@ def test_profile_page_matches_devices_page_controls() -> None:
     leases = {private: lease(private, name="tablet")}
     page = profile_page.render_profile(state, "abcd1234", leases, {}, NOW)
     offered = actions(page)
-    assert {("unblock", private), ("rename", private), ("remove_member", private)} <= offered
+    assert {("unblock", private), ("rename", private), ("set_profile", private)} <= offered
     state["devices"][private]["blocked"] = False
     offered = actions(profile_page.render_profile(state, "abcd1234", leases, {}, NOW))
     assert ("block", private) in offered and ("allow", private) in offered
@@ -335,8 +348,20 @@ def test_device_page_explains_status_and_offers_controls() -> None:
     assert "Scheduled" in words and "Allowed again" in words and "Kids" in words
     assert "10.7.1.77" in words and MEMBER in words and "Tablet" in words
     assert "2.0 MB" in words  # the one spell: four buckets of 0.5 MB
-    assert {("block", MEMBER), ("remove_member", MEMBER), ("add_member", MEMBER)} <= actions(page)
+    assert {("block", MEMBER), ("set_profile", MEMBER)} <= actions(page)
     assert ("rename", MEMBER) in actions(page, "/device")
+    assert ("type", MEMBER) in actions(page, "/device")
+    assert "Automatic (Tablet)" in page and "(a guess)" in words
+    menu = page.split('<select name="kind">')[1].split("</select>")[0]
+    labels = re.findall(r">([^<]+)</option>", menu)
+    assert labels[1:] == sorted(labels[1:], key=str.lower) and len(labels) == 13
+    chosen = make_state({MEMBER: {"kind": "tv"}}, profiles=KIDS)
+    page = device_page.render_device(chosen, MEMBER, leases, {}, connection, "24h", FRI_2230)
+    assert '<option value="tv" selected>' in page and "(a guess)" not in page
+    # One drop-down sets its profile, or none.
+    profiles = page.split('<select name="id">')[1].split("</select>")[0]
+    assert '<option value="">None</option>' in profiles and "selected>Kids" in profiles
+    assert 'class="dev-icon" title="TV/streamer"' in page
     blocked = make_state({MEMBER: {"blocked": True}}, profiles=KIDS)
     words = text(device_page.render_device(blocked, MEMBER, leases, {}, None, "24h", FRI_2230))
     assert "Blocked by hand" in words and "Allowed again" not in words
@@ -360,5 +385,5 @@ def test_top_bar_tip_stays_off_its_controls() -> None:
     """The sky's tooltip is on a layer behind the bar, not on anything holding controls."""
     bar = layout.chrome("home", "", ("day", "Day at homehub (12:00)"))
     assert '<span class="sky-tip" title="Day at homehub (12:00)">' in bar
-    # the tip, the screensaver's link and three theme buttons
-    assert bar.count("title=") == bar.count('title="') == 5
+    # the tip, Flow's link, the theme menu and signing out
+    assert bar.count("title=") == bar.count('title="') == 4

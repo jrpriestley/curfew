@@ -38,8 +38,9 @@
     var rows = flow.height / k;
     for (var v = -(along % 16) - 16; v < cols + 16; v += 16) {
       var at = v + along, biome = BIOMES[biomeAt(at, 1)], verge = vergeAt(at, biome);
-      rect(ctx, v, RT - 2, 16.4, 4, verge);
-      rect(ctx, v, RT + 44, 16.4, rows - RT - 44, verge);
+      // All the way down, under the road, whose edges then have it behind them.
+      var left = onPixel(v);
+      rect(ctx, left, outward(RT - 2, -1), onPixel(v + 16) - left, rows - RT + 3, verge);
       drawRail(v, at, biome.rail);
     }
   }
@@ -63,15 +64,16 @@
     return css(sum.map(function (v) { return v / VERGE_SAMPLES; }));
   }
   function drawRail(v, at, rail) {
+    var left = onPixel(v), wide = onPixel(v + 16) - left;
     var post = Math.round(at) % 48 === 0;
     if (rail === 'rail') {
-      rect(ctx, v, RT - 7, 16.4, 2.2, near('rail'));
+      rect(ctx, left, RT - 7, wide, 2.2, near('rail'));
       rect(ctx, v, RT - 5, 1.2, 5, near('rail'));
     } else if (rail === 'barrier') {
-      rect(ctx, v, RT - 6, 16.4, 6, vertical(ctx, RT - 6, RT, [[0, near('white')], [1, near('cityDark')]]));
+      rect(ctx, left, RT - 6, wide, 6, vertical(ctx, RT - 6, RT, [[0, near('white')], [1, near('cityDark')]]));
     } else if (rail === 'glow') {
-      rect(ctx, v, RT - 6, 16.4, 1.4, near('steelPale'));
-      rect(ctx, v, RT - 4.6, 16.4, 0.5, neon(0, 0.9, 0));
+      rect(ctx, left, RT - 6, wide, 1.4, near('steelPale'));
+      rect(ctx, left, RT - 4.6, wide, 0.5, neon(0, 0.9, 0));
       if (post) {
         rect(ctx, v, RT - 6, 0.8, 6, near('steel'));
       }
@@ -119,8 +121,9 @@
         continue;
       }
       if (!worn) {
-        rect(ctx, x, RT + 2, 8.2, 2, red ? near('kerb') : near('white'));
-        rect(ctx, x, RT + 42, 8.2, 2, red ? near('kerb') : near('white'));
+        var left = onPixel(x), wide = onPixel(x + 8) - left;
+        rect(ctx, left, RT + 2, wide, 2, red ? near('kerb') : near('white'));
+        rect(ctx, left, RT + 42, wide, 2, red ? near('kerb') : near('white'));
         continue;
       }
       brokenKerb(x, RT + 2, red, worn, Math.round(x + along) * 2);
@@ -193,11 +196,12 @@
   }
   // The future's kerb gives way to a dark guide strip; its light is lightLines'.
   function guides(x, red, sleek) {
+    var left = onPixel(x), wide = onPixel(x + 8) - left;
     [RT + 2, RT + 42].forEach(function (y) {
       if (sleek < 1) {
-        rect(ctx, x, y, 8.2, 2, near(red ? 'kerb' : 'white', 1 - sleek));
+        rect(ctx, left, y, wide, 2, near(red ? 'kerb' : 'white', 1 - sleek));
       }
-      rect(ctx, x, y, 8.2, 2, css([28, 32, 42], sleek));
+      rect(ctx, left, y, wide, 2, css([28, 32, 42], sleek));
     });
   }
   // The future's lines of light, brighter about each vehicle and with a pulse running along.
@@ -215,9 +219,10 @@
       });
       var pulse = 0.75 + 0.25 * Math.sin((x + along) / 30 - t * 4);
       var on = sleek * strength * Math.min(1, pulse + 0.5 * nearest);
-      rect(ctx, x, RT + 22.6, 8.2, 0.8, css(NEON[0], on));
-      rect(ctx, x, RT + 2.7, 8.2, 0.6, css(NEON[0], 0.8 * on));
-      rect(ctx, x, RT + 42.7, 8.2, 0.6, css(NEON[1], 0.7 * on));
+      var left = onPixel(x), wide = onPixel(x + 8) - left;
+      rect(ctx, left, RT + 22.6, wide, 0.8, css(NEON[0], on));
+      rect(ctx, left, RT + 2.7, wide, 0.6, css(NEON[0], 0.8 * on));
+      rect(ctx, left, RT + 42.7, wide, 0.6, css(NEON[1], 0.7 * on));
     }
   }
   // The ruinous biomes' kerbs: faded and dirtied, chipped short, crumbled lower, some gone.

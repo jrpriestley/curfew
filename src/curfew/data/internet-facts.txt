@@ -1,5 +1,5 @@
 # The TV screensaver's facts about the internet and computing: one a line, shown in turn
-# (curfew.web.pages.tv). Keep them true, and short enough for two lines.
+# (curfew.web.pages.flow). Keep them true, and short enough for two lines.
 The first message over ARPANET, UCLA to Stanford in October 1969, was “LO”: the system crashed before “LOGIN” was finished.
 The first spam went out in 1978: an advert for DEC computers, to about 400 ARPANET users.
 Scott Fahlman proposed :-) for jokes on a Carnegie Mellon message board in 1982.

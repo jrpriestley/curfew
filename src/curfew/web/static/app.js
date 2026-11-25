@@ -89,8 +89,10 @@ function deviceText(row) {
   return row.textContent + ' ' + (facts ? facts.textContent : '');
 }
 
-function applyFilter(needle) {
-  needle = needle.trim().toLowerCase();
+// By the filter's text and the type chosen beside it, together.
+function applyFilter() {
+  var filter = document.getElementById('filter'), types = document.getElementById('type-filter');
+  var needle = filter ? filter.value.trim().toLowerCase() : '', kind = types ? types.value : '';
   var group = null, groupShown = false, groupMatches = false;
   function closeGroup() { if (group) { group.hidden = !groupShown; } }
   function matches(text) { return !needle || text.toLowerCase().indexOf(needle) >= 0; }
@@ -100,11 +102,11 @@ function applyFilter(needle) {
       closeGroup();
       group = row;
       groupMatches = matches(row.textContent);
-      groupShown = groupMatches;
+      groupShown = groupMatches && !kind;
       return;
     }
     if (row.classList.contains('dev-more')) { return; }  // follows its device row
-    row.hidden = !groupMatches && !matches(deviceText(row));
+    row.hidden = (kind && row.dataset.kind !== kind) || (!groupMatches && !matches(deviceText(row)));
     if (row.classList.contains('dev-row')) { setRow(row, !!openRows[row.dataset.key]); }
     if (!row.hidden) { groupShown = true; }
   });
@@ -189,6 +191,24 @@ document.addEventListener('focusin', function (event) {
   showTip(owner, box.right, box.top);
 });
 document.addEventListener('focusout', function () { tip.hidden = true; });
+// An open menu (the theme's) shuts on a press anywhere else.
+document.addEventListener('pointerdown', function (event) {
+  document.querySelectorAll('details.theme-menu[open]').forEach(function (menu) {
+    if (!menu.contains(event.target)) { menu.open = false; }
+  });
+});
+
+// A drop-down's (or a box's) Save button shows only once it's changed. (Not saved as it's chosen:
+// the arrow keys go through every choice between.)
+function bindPicks(root) {
+  root.querySelectorAll('form.pick').forEach(function (form) {
+    var box = form.querySelector('select, input:not([type=hidden])'), saved = box.value;
+    form.classList.add('ready');
+    box.addEventListener('input', function () {
+      form.classList.toggle('edited', box.value !== saved);
+    });
+  });
+}
 
 // Bind the page's small behaviours inside root (the document, or a swapped-in
 // <main>); safe to run again on new content.
@@ -196,11 +216,17 @@ function enhance(root) {
   adoptTips(root);
   var filter = root.querySelector('#filter');
   if (filter) {
-    filter.addEventListener('input', function () { applyFilter(filter.value); });
-    if (filter.value) { applyFilter(filter.value); }
+    var types = root.querySelector('#type-filter');
+    filter.addEventListener('input', applyFilter);
+    types.addEventListener('change', function () {
+      types.blur();  // while a menu has the focus the page doesn't refresh
+      applyFilter();
+    });
+    if (filter.value || types.value) { applyFilter(); }
   }
   bindInfo(root);
   bindRows(root);
+  bindPicks(root);
   // TV Settings: the remote starts on the choice in use.
   var chosen = root.querySelector('.tv-option[aria-pressed=true]');
   if (chosen) { chosen.focus(); }
@@ -240,9 +266,9 @@ function enhance(root) {
   startLive(root);
   placeSky();
   tick();
-  // Theme buttons: show which one is in force (the server sets data-theme).
+  // The theme menu: shows which one is in force (the server sets data-theme).
   var theme = document.documentElement.getAttribute('data-theme') || 'system';
-  document.querySelectorAll('.theme button').forEach(function (button) {
+  document.querySelectorAll('.theme-list button').forEach(function (button) {
     button.setAttribute('aria-pressed', String(button.value === theme));
   });
 }
@@ -363,6 +389,8 @@ function swapIn(html, url, push, moved) {
     });
     var filter = document.getElementById('filter');
     var needle = filter ? filter.value : '';
+    var types = document.getElementById('type-filter');
+    var kind = types ? types.value : '';
     var opened = Array.prototype.map.call(main.querySelectorAll('details'), function (item) {
       return item.open;
     });
@@ -388,6 +416,11 @@ function swapIn(html, url, push, moved) {
     }
     var freshFilter = document.getElementById('filter');
     if (freshFilter && needle) { freshFilter.value = needle; }
+    var freshTypes = document.getElementById('type-filter');
+    if (freshTypes && kind) {
+      freshTypes.value = kind;
+      if (!freshTypes.value) { freshTypes.value = ''; }  // none of that type left
+    }
     enhance(document);
     window.scrollTo(0, sameView ? scrolled : 0);
     swappedAt = Date.now();
@@ -423,7 +456,7 @@ window.addEventListener('pageshow', function () {
   arrived();  // Back into a page the browser kept
   // A browser may put the filter's text back on a reload, without an input event.
   var filter = document.getElementById('filter');
-  if (filter && filter.value) { applyFilter(filter.value); }
+  if (filter) { applyFilter(); }
 });
 
 // Fetch a page and swap it in; if that fails, load it normally.
@@ -486,7 +519,7 @@ document.addEventListener('submit', function (event) {
 function quiet() {
   var active = document.activeElement;
   return !document.hidden && !busy && !document.querySelector('.info.open') &&
-    !document.querySelector('form.rename:not([hidden])') &&
+    !document.querySelector('form.rename:not([hidden]), form.pick.edited') &&
     !(active && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName));
 }
 
@@ -842,14 +875,20 @@ function tvStep(step) {
   }, TV_SETTLE);
 }
 
-// The screensaver (/tv/flow) starts after <main data-saver> minutes without a
-// key (Settings), or with OK; on it, any key goes back where it came from.
+// Flow (/flow; /tv/flow on a TV, where it's the screensaver) starts on a TV after <main
+// data-saver> minutes without a key (Settings), or with OK; on it, any key goes back where it
+// came from.
 var tvLastKey = Date.now();
 // In the Fire TV app (Android's WebView, "; wv)"), or a computer's browser: there, the
 // remote's Menu and Play/Pause (which the app hands over) are Z and Space, and the hint
 // names the keyboard's keys.
 var tvApp = /; wv\)/.test(navigator.userAgent);
 
+// What Flow keeps on this screen: a TV's is sent only to /tv, any other's only to /flow.
+function flowKeep(name, value) {
+  document.cookie = name + '=' + value + '; Path=' + (/^\/tv/.test(location.pathname) ? '/tv' : '/flow') +
+    '; Max-Age=' + (value ? 31536000 : 0) + '; SameSite=Lax; Secure';
+}
 function tvFlow() {
   location.assign('/tv/flow?back=' + encodeURIComponent(location.pathname));
 }
@@ -862,8 +901,7 @@ function tvZenOn() {
 }
 function tvZen() {
   var on = !(document.querySelector('main.tv-flow') && tvZenOn());
-  document.cookie = 'curfew_zen=' + (on ? '1; Max-Age=31536000' : '; Max-Age=0') +
-    '; Path=/tv; SameSite=Lax; Secure';
+  flowKeep('curfew_zen', on ? '1' : '');
   document.documentElement.classList.toggle('zen', on);
   if (!document.querySelector('main.tv-flow')) {
     tvFlow();
@@ -883,7 +921,7 @@ function tvNextLook() {
     }
   });
   var look = looks[(at + 1) % looks.length];
-  document.cookie = 'curfew_flow=' + look + '; Path=/tv; Max-Age=31536000; SameSite=Lax; Secure';
+  flowKeep('curfew_flow', look);
   var scene = document.getElementById('flow');
   if (scene && scene.switchLook) {
     scene.switchLook(look);
@@ -907,23 +945,42 @@ function tvFlowToggle() {
   }
 }
 
-// The TV app's remote on the screensaver: Menu (or z) for zen, up for sound on, down for
-// sound off, left and right for Highway's minimum speed, OK for the next theme, any other
-// key back.
+// The TV app's remote on the screensaver: Menu (or z) for zen, up for more sound, down for
+// less, left and right for Highway's minimum speed, channel up and down (or fast forward
+// and rewind) for its next and previous biome, OK for the next theme, any other key back.
+var BIOME_KEYS = {ChannelUp: 1, ChannelDown: -1, PageUp: 1, PageDown: -1, MediaFastForward: 1, MediaRewind: -1};
+// By number too, as a WebView may not know their names.
+var BIOME_CODES = {427: 'ChannelUp', 428: 'ChannelDown', 166: 'ChannelUp', 167: 'ChannelDown', 33: 'PageUp', 34: 'PageDown'};
 function flowKey(key) {
+  var highway = document.querySelector('main.flow-highway');
   if (key === 'z' || key === 'Z' || key === 'ContextMenu') {
     tvZen();
   } else if (key === 'ArrowUp' || key === 'ArrowDown') {
-    if (window.flowSoundSet) {
-      window.flowSoundSet(key === 'ArrowUp');
+    if (window.flowSoundStep) {
+      window.flowSoundStep(key === 'ArrowUp' ? 1 : -1);
     }
-  } else if ((key === 'ArrowLeft' || key === 'ArrowRight') && document.querySelector('main.flow-highway')) {
+  } else if ((key === 'ArrowLeft' || key === 'ArrowRight') && highway) {
     window.flowMinSpeed(key === 'ArrowRight' ? 1 : -1);
+  } else if (BIOME_KEYS[key]) {
+    if (highway) {
+      window.flowBiome(BIOME_KEYS[key]);
+    }
   } else if (key === 'Enter') {
     tvNextLook();
   } else {
     tvBack();
   }
+}
+// The last few keys the screensaver was given, for its frame report: what a remote's buttons
+// send is found out there.
+var flowKeys = [];
+function keyName(event) {
+  var name = event.key && event.key !== 'Unidentified' ? event.key : BIOME_CODES[event.keyCode] || 'key ' + event.keyCode;
+  if (!event.repeat) {
+    flowKeys.push(name);
+    flowKeys = flowKeys.slice(-8);
+  }
+  return name;
 }
 
 if (document.documentElement.classList.contains('tv-page')) {
@@ -937,7 +994,7 @@ if (document.documentElement.classList.contains('tv-page')) {
         return;
       }
       event.preventDefault();
-      flowKey(key);
+      flowKey(keyName(event));
       return;
     }
     var options = Array.prototype.slice.call(document.querySelectorAll('main .tv-option'));

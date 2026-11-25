@@ -92,12 +92,13 @@ def render_unknown_queue(
     rows = []
     for mac in pending:
         lease = leases[mac]
-        name = display_name(mac, state["devices"].get(mac, {}), lease, conf_names)
+        record = state["devices"].get(mac, {})
+        name = display_name(mac, record, lease, conf_names)
         form_id = "approve-" + mac.replace(":", "")
         # The name box sits in its own cell, tied to the Approve form by id,
         # so every row's box and buttons line up in columns.
         rows.append(
-            f"<tr>{device_cell(name, mac, lease)}"
+            f"<tr>{device_cell(name, mac, lease, record)}"
             f'<td class="seen detail">{format_seen(lease.last_seen, now)}</td>'
             f'<td class="newname"><input type="text" name="name" form="{form_id}" '
             f'maxlength="{MAX_NAME}" aria-label="Name for {html.escape(name or mac)}" '

@@ -51,36 +51,61 @@
     p.fillStyle = stuff('roof', haze);
     p.fill();
   }
-  // A strip of fields in perspective, its far edge at y; the hedges between run toward us.
+  // Where across a tile to put something `wide`, so that all of it's on it: what's cut off at
+  // a tile's side ends in a straight upright edge, whatever its shape.
+  function fitting(random, wide) {
+    return random() * (TILE - wide);
+  }
+  // A strip of fields in perspective, its far edge at y; the hedges between run toward us, all
+  // at one slant. One hedge crosses each side of the tile, with the same field to each side of
+  // it on every tile, so the next tile's fields carry on from these.
   var FIELD_CROPS = ['field', 'field2', 'grass', 'earth', 'field', 'grassDark'];
-  function fieldRow(p, random, y, deep, mist) {
-    var lean = deep * 0.6;
-    for (var x = -random() * 60 - lean; x < TILE;) {
-      var wide = 24 + random() * 60 + deep * 2;
-      var crop = FIELD_CROPS[Math.floor(random() * FIELD_CROPS.length)], base = tone(crop, mist);
-      p.beginPath();
-      p.moveTo(x, y);
-      p.lineTo(x + wide + 0.6, y);
-      p.lineTo(x + wide + lean + 0.6, y + deep + 0.4);
-      p.lineTo(x + lean, y + deep + 0.4);
-      p.closePath();
-      p.fillStyle = vertical(p, y, y + deep, [[0, css(blend(base, [255, 255, 255], 0.08))], [1, css(blend(base, [0, 0, 0], 0.08))]]);
-      p.fill();
-      if (crop === 'earth' || crop === 'field2') {
-        furrows(p, x, y, wide, deep, lean, mist);
-      } else if (crop === 'grass' && deep > 5) {
-        p.fillStyle = css([255, 255, 255], 0.05);
-        for (var stripe = y + deep * 0.25; stripe < y + deep; stripe += deep * 0.5) {
-          p.fillRect(x + lean * 0.5, stripe, wide, deep * 0.22);
-        }
+  function fieldRow(p, random, y, deep, mist, row) {
+    var lean = deep * 0.6, start = -lean / 2, end = TILE - lean / 2, side = 40 + deep * 2;
+    var first = FIELD_CROPS[row * 3 % FIELD_CROPS.length], last = FIELD_CROPS[(row * 5 + 2) % FIELD_CROPS.length];
+    field(p, last, start - side, y, side, deep, lean, mist);
+    field(p, first, start, y, side, deep, lean, mist);
+    for (var x = start + side; x < end - side;) {
+      var wide = 24 + random() * 60 + deep * 2, left = end - side - x;
+      if (left - wide < 24) {
+        wide = left;
       }
-      p.strokeStyle = stuff('treeDark', mist, 0.75);
-      p.lineWidth = Math.min(1.2, 0.3 + deep * 0.05);
-      p.beginPath();
-      segment(p, x + wide, y, x + wide + lean, y + deep);
-      p.stroke();
+      field(p, FIELD_CROPS[Math.floor(random() * FIELD_CROPS.length)], x, y, wide, deep, lean, mist);
       x += wide;
     }
+    field(p, last, end - side, y, side, deep, lean, mist);
+    field(p, first, end, y, side, deep, lean, mist);
+  }
+  function field(p, crop, x, y, wide, deep, lean, mist) {
+    var base = tone(crop, mist);
+    p.beginPath();
+    p.moveTo(x, y);
+    p.lineTo(x + wide + 0.6, y);
+    p.lineTo(x + wide + lean + 0.6, y + deep + 0.4);
+    p.lineTo(x + lean, y + deep + 0.4);
+    p.closePath();
+    p.fillStyle = vertical(p, y, y + deep, [[0, css(blend(base, [255, 255, 255], 0.08))], [1, css(blend(base, [0, 0, 0], 0.08))]]);
+    p.fill();
+    if (crop === 'earth' || crop === 'field2') {
+      furrows(p, x, y, wide, deep, lean, mist);
+    } else if (crop === 'grass' && deep > 5) {
+      mown(p, x, y, wide, deep, lean);
+    }
+    p.strokeStyle = stuff('treeDark', mist, 0.75);
+    p.lineWidth = Math.min(1.2, 0.3 + deep * 0.05);
+    p.beginPath();
+    segment(p, x + wide, y, x + wide + lean, y + deep);
+    p.stroke();
+  }
+  // Mown in strips across, within the field just filled (the current path).
+  function mown(p, x, y, wide, deep, lean) {
+    p.save();
+    p.clip();
+    p.fillStyle = css([255, 255, 255], 0.05);
+    for (var stripe = y + deep * 0.25; stripe < y + deep; stripe += deep * 0.5) {
+      p.fillRect(x, stripe, wide + lean + 1, deep * 0.22);
+    }
+    p.restore();
   }
   // Within the field just filled (the current path).
   function furrows(p, x, y, wide, deep, lean, mist) {
@@ -142,12 +167,12 @@
     fields: function (p, random, h, haze) {
       bandRows(h).forEach(function (row, n) {
         var y = row[0], deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.7);
-        fieldRow(p, random, y, deep, mist);
+        fieldRow(p, random, y, deep, mist, n);
         var hedge = Math.min(1, 0.3 + deep * 0.04);
         p.fillStyle = stuff('treeDark', mist, 0.8);
         p.fillRect(0, y + deep - hedge, TILE, hedge + 0.2);
         for (var t = 0; t < 3 + n; t += 1) {
-          tree(p, random, random() * TILE, y + deep, Math.min(deep * 0.95, 1.5 + deep * 0.35), mist, true);
+          tree(p, random, deep / 2 + fitting(random, deep), y + deep, Math.min(deep * 0.95, 1.5 + deep * 0.35), mist, true);
         }
         if (random() < 0.5) {
           var fx = 40 + random() * (TILE - 80);
@@ -212,7 +237,7 @@
         var deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.5);
         for (var x = random() * 8; x < TILE; x += 3 + random() * 6 + deep * 0.6) {
           var w = 2 + deep * (0.4 + random() * 0.6), tall = deep * (0.35 + random() * 0.55);
-          if (tall > 1.2) {
+          if (tall > 1.2 && x + w <= TILE) {
             building(p, random, x, w, tall, row[1], mist, false, true);
           }
           x += w;
@@ -395,7 +420,7 @@
       bandRows(h).forEach(function (row) {
         var y = row[0], deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.6), lean = deep * 0.6;
         for (var n = 0; n < 2; n += 1) {
-          var sx = random() * TILE, wide = 16 + random() * 30 + deep * 3;
+          var wide = 16 + random() * 30 + deep * 3, sx = fitting(random, wide + lean);
           if (!kept(sx) || deep < 3) {
             continue;
           }
@@ -411,7 +436,7 @@
         }
         p.fillStyle = neon(0, 0.25, mist);
         p.fillRect(0, row[1] - 0.3, TILE, 0.3);
-        for (var lx = random() * 30; lx < TILE; lx += 24 + random() * 30) {
+        for (var lx = random() * 30; lx < TILE - lean; lx += 24 + random() * 30) {
           p.strokeStyle = neon(random() < 0.8 ? 0 : 1, 0.3, mist);
           p.lineWidth = 0.3;
           p.beginPath();
@@ -509,7 +534,7 @@
         var deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.7), foot = row[1] - deep * 0.15;
         var street = Math.max(0.3, deep * 0.12);
         rect(p, 0, row[1] - street, TILE, street, stuff('pavement', mist, 0.8));
-        for (var x = random() * 10; x < TILE; x += deep * (1.2 + random() * 1.2)) {
+        for (var x = random() * 10; x < TILE - deep * 2.4; x += deep * (1.2 + random() * 1.2)) {
           if (random() < 0.3) {
             tree(p, random, x, foot, Math.min(deep * 0.8, 1 + deep * 0.6), mist, true);
             x += deep * 0.6;
@@ -582,7 +607,7 @@
       bandRows(h).forEach(function (row) {
         var deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.7);
         for (var n = 0; n < 3; n += 1) {
-          var cx = random() * TILE, rx = 3 + deep * (1 + random());
+          var rx = 3 + deep * (1 + random()), cx = rx + fitting(random, 2 * rx);
           ellipse(p, cx, row[0] + deep * 0.55, rx, deep * 0.35, stuff('scorch', mist, 0.7));
           p.fillStyle = stuff('ash', mist * 0.6, 0.6);
           p.beginPath();
@@ -590,7 +615,7 @@
           p.fill();
         }
         for (n = 0; n < 2; n += 1) {
-          var bx = random() * TILE;
+          var bx = 1 + deep * 0.3 + fitting(random, 2 + deep * 0.6);
           if (kept(bx)) {
             ellipse(p, bx, row[1] - deep * 0.3, 1 + deep * 0.3, deep * 0.18, burning);
           }
@@ -654,10 +679,10 @@
         }
         p.stroke();
         for (var n = 0; n < 2; n += 1) {
-          ellipse(p, random() * TILE, y0 + deep / 2, 8 + deep * 2, deep * 0.3, stuff('saltDark', mist, 0.25));
+          ellipse(p, 8 + deep * 2 + fitting(random, 16 + deep * 4), y0 + deep / 2, 8 + deep * 2, deep * 0.3, stuff('saltDark', mist, 0.25));
         }
         for (n = 0; n < 4; n += 1) {
-          var sx = random() * TILE;
+          var sx = 2 + fitting(random, 4);
           if (kept(sx)) {
             circle(p, sx, row[1] - deep * 0.15, Math.min(deep * 0.3, 0.4 + deep * 0.1), stuff('earth', mist));
           }
@@ -735,8 +760,8 @@
       bandRows(h).forEach(function (row, r) {
         var y0 = row[0], deep = row[1] - row[0], mist = rowHaze(haze, row, h, 0.7);
         for (var n = 0; n < 2; n += 1) {
-          var scarX = random() * TILE;
-          ellipse(p, scarX, y0 + deep / 2, 6 + deep * 3 + random() * 10, deep * 0.3, stuff('scorch', mist, 0.3));
+          var scar = 6 + deep * 3 + random() * 10;
+          ellipse(p, scar + fitting(random, 2 * scar), y0 + deep / 2, scar, deep * 0.3, stuff('scorch', mist, 0.3));
         }
         p.lineWidth = 0.4;
         p.strokeStyle = stuff('dustDark', mist, 0.6);
@@ -748,7 +773,7 @@
           return;
         }
         for (n = 0; n < 7; n += 1) {
-          var jx = random() * TILE;
+          var jx = fitting(random, 5);
           if (!kept(jx)) {
             continue;
           }
@@ -821,7 +846,7 @@
       rect(p, 0, 0, TILE, h, vertical(p, 0, h, [[0, css(blend([255, 140, 40], skyColour('low'), haze * 0.4))], [1, css([238, 86, 18])]]));
       bandRows(h).forEach(function (row) {
         var deep = row[1] - row[0], b = Math.max(1, deep / 2), mist = rowHaze(haze, row, h, 0.7);
-        for (var x = 0; x < TILE; x += b) {
+        for (var x = 0; x + b <= TILE; x += b) {
           var pick = random();
           if (pick < 0.3) {
             rect(p, x, row[0] + b * 0.5, b, b, css(blend([60, 14, 10], [255, 120, 30], 0.2 + 0.2 * random()), 0.8));
@@ -831,7 +856,7 @@
         }
         // Islands: mounds of blocks, two high at most.
         for (var n = 0; n < 3; n += 1) {
-          var ix = Math.floor(random() * TILE / b) * b, wide = 3 + Math.floor(random() * 6);
+          var wide = 3 + Math.floor(random() * 6), ix = Math.floor(fitting(random, wide * b) / b) * b;
           if (!kept(ix)) {
             continue;
           }
@@ -1296,7 +1321,7 @@
   // A crack across a row, kept within it.
   function crack(p, random, row, deep) {
     var y0 = row[0];
-    var cy = y0 + deep * (0.2 + 0.6 * random()), cx = random() * TILE;
+    var cy = y0 + deep * (0.2 + 0.6 * random()), cx = fitting(random, 44);
     p.beginPath();
     p.moveTo(cx, cy);
     for (var seg = 0; seg < 4; seg += 1) {

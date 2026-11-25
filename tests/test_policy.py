@@ -199,13 +199,16 @@ def test_apply_profile_action_flow() -> None:
     profile_id = first.split("=")[1]
     assert state["profiles"][profile_id]["name"] == "Kids"
     mac = "aa:bb:cc:dd:ee:02"
-    policy.apply_profile_action(state, {"action": "add_member", "id": profile_id, "mac": mac})
+    policy.apply_profile_action(state, {"action": "set_profile", "id": profile_id, "mac": mac})
     other_id = policy.apply_profile_action(state, {"action": "create", "name": "Teen"}).split("=")[
         1
     ]
-    policy.apply_profile_action(state, {"action": "add_member", "id": other_id, "mac": mac})
+    policy.apply_profile_action(state, {"action": "set_profile", "id": other_id, "mac": mac})
     assert state["profiles"][profile_id]["members"] == []  # a device has one profile
     assert state["profiles"][other_id]["members"] == [mac]
+    policy.apply_profile_action(state, {"action": "set_profile", "id": "", "mac": mac})
+    assert state["profiles"][other_id]["members"] == []
+    policy.apply_profile_action(state, {"action": "set_profile", "id": other_id, "mac": mac})
     fields = {"action": "add_schedule", "id": profile_id, "day0": "1", "day4": "1"}
     policy.apply_profile_action(state, {**fields, "start": "21:00", "end": "07:00"})
     assert state["profiles"][profile_id]["schedules"][0]["days"] == [0, 4]

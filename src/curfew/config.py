@@ -47,6 +47,7 @@ LOCK_FILE = STATE_DIR / "state.lock"
 TRAFFIC_DB = STATE_DIR / "traffic.db"
 PIHOLE_STAMP = STATE_DIR / "pihole-sync.json"
 SPEEDTEST_MARK = STATE_DIR / "speedtest-started"  # when the last test began (Orbit's probe)
+SESSIONS_FILE = STATE_DIR / "sessions.json"  # who is signed in, kept over a restart
 TV_KEY_FILE = STATE_DIR / "tv-key"  # the read-only TV dashboard's key (curfew tv-link)
 IEEE_DIR = Path(setting("paths", "ieee_dir", "/usr/share/ieee-data"))
 EMBER_DIR = Path(setting("paths", "ember_dir", "/usr/local/share/ember"))  # not ours to ship

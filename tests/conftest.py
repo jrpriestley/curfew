@@ -69,11 +69,13 @@ def server():
     host = f"127.0.0.1:{httpd.server_address[1]}"
     token = app.sessions.create()
 
-    def request(method, path, body="", signed_in=True, referer="", cookie=""):
+    def request(method, path, body="", signed_in=True, referer="", cookie="", agent=""):
         connection = http.client.HTTPConnection(host)
         headers = {"Cookie": (f"{auth.SESSION_COOKIE}={token}; " if signed_in else "") + cookie}
         if body:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
+        if agent:
+            headers["User-Agent"] = agent
         if referer:  # a path on this server, or a full URL elsewhere
             headers["Referer"] = referer if "://" in referer else f"http://{host}{referer}"
         connection.request(method, path, body, headers)

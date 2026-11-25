@@ -68,7 +68,7 @@ def test_homehub_is_always_on_the_device_list(monkeypatch, tmp_path) -> None:
     with pytest.raises(ValueError):
         devices.apply_device_action(state, mac, "block")
     with pytest.raises(ValueError):
-        policy.apply_profile_action(state, {"action": "add_member", "id": "p1", "mac": mac})
+        policy.apply_profile_action(state, {"action": "set_profile", "id": "p1", "mac": mac})
     devices.apply_device_action(state, mac, "rename", "Router")
     assert state["devices"][mac] == {"name": "Router"}
 

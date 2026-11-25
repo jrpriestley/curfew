@@ -7,12 +7,11 @@
       drawFallout(time);
       drawSearchlights(time);
       drawRises(now);
-      drawBombs(time);
       drawAdverts(time);
     },
     band: function (time, seconds) {
       // The sea's glitter, under the headlands.
-      glitter(RT - 66, RT - 2, biomeAt(odometer * 0.1 + sunAt.x, 0.1) === 'coast' ? 1 : 0, time, 31);
+      glitter(RT - 66, RT - 2, seaAt(sunAt.x), time, 31);
       drawImpacts(time, seconds);
     },
     hills: function (time) {
@@ -35,6 +34,15 @@
       }
     },
   };
+  // How much of the sea is at `x` across, at every depth of it, fading over SHORE of its ends.
+  var SHORE = 70;
+  function seaAt(x) {
+    return [0, 35, 70].map(function (up) { return bandRate(RT - up); }).reduce(function (least, rate) {
+      var at = odometer * rate + x, n = spanOver(at, rate);
+      var into = spanNow(n) === 'coast' ? Math.min(at - spanEdge(n, rate), spanEdge(n + 1, rate) - at) : 0;
+      return Math.min(least, flow.smoothstep(into / SHORE));
+    }, 1);
+  }
   // The sky's tint follows the biome we're in, remade at most twice a second while it shifts.
   function easeTint(seconds) {
     var want = TINTS[biomeAt(odometer + cols * 0.5, 1)];
@@ -64,6 +72,7 @@
   }
   function drawSkyLayers(time, seconds) {
     drawClouds(time);
+    drawBombs(time);
     drawPlane(seconds, time);
     drawCraft(seconds, time);
     drawHellSky(seconds);
@@ -160,8 +169,22 @@
     var soon = -gap / (other.speed - velocity);
     if (soon > 0 && soon < 4) {
       other.heard = true;
-      flow.sound.pass(soon, gap > 0 ? 1 : -1);
+      var faster = other.speed - velocity, left = -(other.x + other.length) / faster, right = (cols - other.x) / faster;
+      flow.sound.pass(soon, gap > 0 ? 1 : -1, Math.min(left, right), Math.max(left, right));
     }
+  }
+  // How loud what's at `x` is for its place: all of it well on the screen, less at its edge,
+  // and less again off it, to nothing half a screen away.
+  function heardAt(x) {
+    var inside = Math.min(x, cols - x) / cols;
+    return inside > 0 ? 0.45 + 0.55 * Math.min(1, inside / 0.2) : 0.45 * Math.max(0, 1 + inside / 0.5);
+  }
+  // How much of our car is in a tunnel, `seconds` from now.
+  function tunnelled(seconds) {
+    var x = ours.x + velocity * seconds;
+    return tunnels.reduce(function (most, t) {
+      return Math.max(most, (Math.min(x + ours.length, t[1]) - Math.max(x, t[0])) / ours.length);
+    }, 0);
   }
   // What's heard (flow-sound.js).
   function soundOf(shown, throttle) {
@@ -169,7 +192,7 @@
     hearPass(gap);
     flow.sound.drive({
       speed: velocity / TOP,
-      tunnel: inTunnel(ours.x, ours.x + ours.length),
+      tunnel: tunnelled(flow.sound.lead),
       wind: Math.min(1, (wind || 0) / 40),
       rain: precipNow && precipNow.kind === 'rain' ? Math.min(1, precipNow.amount || 0.5) : 0,
       passing: shown ? Math.max(0, 1 - Math.abs(gap) / 160) : 0,
@@ -203,8 +226,8 @@
     var driving = drive(seconds, calm);
     watchBlast(time);
     watchGlitch(time);
-    precipNow = rainNow();
-    adLights = [];
+    precipNow = flow.precip;
+    adCasts = [];
     wetRoad(seconds);
     easeTint(seconds);
     var now = Date.now();
@@ -253,7 +276,7 @@
     }
     nightBegin(scene);
     nightRoad();
-    wetNeon();
+    castAdverts();
     if (worldOn) {
       glitter(RT + 4, RT + 42, 0.7 * roadWet, time, 37);
     }
@@ -274,6 +297,8 @@
     drawOverlays(seconds, time);
     ctx.restore();
   }
+  // Every biome, in the order they're stepped through.
+  var TOUR = ['asteroids', 'atomic', 'badlands', 'city', 'coast', 'country', 'desert', 'future', 'underworld', 'warzone', 'wasteland'];
   var highwayScene = {
     turn: 0,
     lift: null,
@@ -282,9 +307,8 @@
       k = flow.height / ROWS;
       cols = flow.width / k;
       RT = ROWS - 62;
-      tiles = {};
+      dropAllPictures();
       sprites = {};
-      bodies = {};
       grain = null;
       flow.skyCanvas.width = 1;
       flow.skyCanvas.height = 1;
@@ -303,6 +327,26 @@
     // For the frame report: the biome at the middle of the screen.
     where: function () { return biomeAt(odometer + cols * 0.5, 1); },
     frame: highwayFrame,
+    // To the next biome of TOUR's, or (-1) the one before, at its beginning, its sign coming up
+    // (Controls, or up and down held); whatever was going on in this one is left behind. The span before it is made the
+    // same, as the far layers would show that one for a while yet. Returns its name.
+    toBiome: function (way) {
+      var here = biomeAt(odometer + cols * 0.5, 1), next = spanAt(odometer) + 2;
+      var name = TOUR[(TOUR.indexOf(here === 'aftermath' ? 'atomic' : here) + way + TOUR.length) % TOUR.length];
+      spanOf[next - 1] = spanOf[next] = name;
+      odometer = next * SPAN + 60;
+      // Each biome's pictures are tens of megabytes, and stepped through quickly they'd pile up.
+      dropAllPictures();
+      glitch = blast = other = null;
+      rocks = [];
+      bits = [];
+      craft = [];
+      strikes = [];
+      hell = name === 'underworld' ? 1 : 0;
+      tint = TINTS[name].slice();
+      makeSky();
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    },
     ground: function () {},
     drive: function () { return []; },
     over: function () {},

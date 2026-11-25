@@ -25,9 +25,11 @@ NUMBERS = (
     "costMax",
     "width",
     "height",
+    "tick",
 )
-WORDS = ("look", "quality", "where")
-FLAGS = ("app", "ultra")
+WORDS = ("look", "quality", "where", "keys")
+LONGEST = {"keys": 120}
+FLAGS = ("app", "ultra", "sound")
 
 
 def keep_report(
@@ -52,7 +54,7 @@ def keep_report(
     for name in WORDS:
         value = given.get(name)
         if isinstance(value, str):
-            line[name] = value[:24]
+            line[name] = value[: LONGEST.get(name, 24)]
     for name in FLAGS:
         if isinstance(given.get(name), bool):
             line[name] = given[name]

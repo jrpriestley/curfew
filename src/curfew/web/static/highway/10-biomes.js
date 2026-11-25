@@ -4,10 +4,14 @@
   // `change` is how much of a tile two biomes share as one gives way to the next. Tile
   // outlines come down to nothing at both ends, so one biome's meets the next's anywhere,
   // except `band` (solid to its floor) and `side` (the verge).
+  // The nearer the faster, from the far layer to the road, with nothing drawn between two of them
+  // at a rate outside theirs: else what's behind slides past what's in front. The skyline's
+  // towers (RISE_RATE) stand between the mid layer and the band's farthest row.
+  var RISE_RATE = 0.06;
   var SLOTS = [
-    {key: 'far', from: 160, to: 70, rate: 0.055, haze: 0.62, fine: 1.5},
-    {key: 'mid', from: 130, to: 70, rate: 0.065, haze: 0.48, fine: 2},
-    {key: 'band', from: 70, to: 0, rate: 0.1, haze: 0.4, fine: 2, rows: [0.062, 0.16]},
+    {key: 'far', from: 160, to: 70, rate: 0.05, haze: 0.62, fine: 1.5},
+    {key: 'mid', from: 130, to: 70, rate: 0.055, haze: 0.48, fine: 2},
+    {key: 'band', from: 70, to: 0, rate: 0.1, haze: 0.4, fine: 2, rows: [0.064, 0.158]},
     {key: 'hills', from: 76, to: 0, rate: 0.16, haze: 0.3, fine: 2.5},
     {key: 'near', from: 64, to: 0, rate: 0.25, haze: 0.2, fine: 3},
     {key: 'nearer', from: 70, to: 0, rate: 0.4, haze: 0.1, fine: 3.5},
@@ -48,7 +52,7 @@
   // Only after its parent, whose land is still going off as it comes on. The atomic city
   // turns to `aftermath` when the bombs fall, BLAST of the way along.
   var ORDER = ['country', 'city', 'desert', 'coast'], start = Math.floor(Math.random() * ORDER.length);
-  var WASTE = 0.3, BADLANDS = 0.3, FUTURE = 0.3, ATOMIC = 0.3, BLAST = 0.36, WAR = 0.3, ASTEROIDS = 0.3, UNDER = 0.3;
+  var WASTE = 0.3, BADLANDS = 0.3, FUTURE = 0.3, ATOMIC = 0.3, BLAST = 0.42, WAR = 0.3, ASTEROIDS = 0.3, UNDER = 0.3;
   var luck = Math.floor(Math.random() * 1e6), spanOf = {};
   function spanBiome(n) {
     if (!spanOf[n]) {
@@ -322,6 +326,11 @@
   // own rate (between SLOTS band's `rows`), so the land in front of the hills slides by in
   // perspective. Nothing drawn in a row may cross into the next: it would tear as they drift.
   var rowsOf = {};
+  // The rate of the band's ground at `y`.
+  function bandRate(y) {
+    var band = SLOTS.filter(function (slot) { return slot.rows; })[0], down = (y - RT + band.from) / (band.from - band.to);
+    return band.rows[0] + (band.rows[1] - band.rows[0]) * Math.max(0, Math.min(1, down));
+  }
   function bandRows(h) {
     if (!rowsOf[h]) {
       var rows = [];

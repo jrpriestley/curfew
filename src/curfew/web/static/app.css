@@ -12,7 +12,7 @@
   --icon: 2.1rem; --icon-gap: 0.65rem;  /* a device's type icon, and the gap to its name */
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
   --bg: #121211; --surface: #1c1c1b; --surface-2: #262624; --text: #ecebe7;
   --muted: #a9a8a0; --border: #33332f; --accent: #7aa9f0; --danger: #f28b82;
   --ok: #4fbf74; --warn: #f0b45a; --grid: #33332f; --track: #3a3a36;
@@ -23,7 +23,7 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 45%); color-scheme: dark;
 }
 }
-:root[data-theme="dark"] {
+:root:is([data-theme="dark"], [data-theme="midnight"], [data-theme="forest"]) {
   --bg: #121211; --surface: #1c1c1b; --surface-2: #262624; --text: #ecebe7;
   --muted: #a9a8a0; --border: #33332f; --accent: #7aa9f0; --danger: #f28b82;
   --ok: #4fbf74; --warn: #f0b45a; --grid: #33332f; --track: #3a3a36;
@@ -32,6 +32,26 @@
   --danger-bg: #45201c; --danger-fg: #f6a49c; --muted-bg: #2d2d2a; --muted-fg: #c3c2b7;
   --h1: #0d366b; --h2: #184f95; --h3: #256abf; --h4: #3987e5; --h5: #6da7ec; --h6: #b7d3f6;
   --shadow: 0 1px 2px rgb(0 0 0 / 45%); color-scheme: dark;
+}
+/* More themes, each over the light or the dark one: Paper, warm; Ocean, cool; Midnight, deep
+   blue; Forest, deep green. */
+:root[data-theme="paper"] {
+  --bg: #f3eee4; --surface: #fbf8f2; --surface-2: #f0eadf; --text: #2b261f; --muted: #6c6457;
+  --border: #e3dbcd; --accent: #a04a18; --grid: #e5ddd0; --track: #ddd4c5; --muted-bg: #ece5d9;
+}
+:root[data-theme="ocean"] {
+  --bg: #e9f1f5; --surface: #fbfdfe; --surface-2: #edf4f7; --text: #0e2531; --muted: #4c6470;
+  --border: #d3e2e9; --accent: #0b6e8e; --grid: #d9e6ec; --track: #cfdfe6; --muted-bg: #e3edf1;
+}
+:root[data-theme="midnight"] {
+  --bg: #0a0f1e; --surface: #121a2e; --surface-2: #1a2440; --text: #e5eaf6; --muted: #9ba6c3;
+  --border: #253152; --accent: #8db3ff; --grid: #253152; --track: #2b385c; --muted-bg: #1f2a47;
+  --muted-fg: #c4cbe0;
+}
+:root[data-theme="forest"] {
+  --bg: #0d130f; --surface: #151d17; --surface-2: #1e2920; --text: #e4ede5; --muted: #a0b1a3;
+  --border: #2a372d; --accent: #86d494; --grid: #2a372d; --track: #334236; --muted-bg: #223026;
+  --muted-fg: #c5d3c7;
 }
 /* Amazon Ember, the house's font for every web page, from homehub's own copy (EMBER_DIR). */
 @font-face { font-family: "Amazon Ember"; src: url("/ember-400.woff2") format("woff2");
@@ -50,9 +70,9 @@ body { margin: 0; background: var(--bg); color: var(--text);
 a { color: var(--accent); text-decoration: none; }
 /* Text links underline on hover; links styled as controls (nav, tiles,
    ranges, sort headings) sit elsewhere and never do. */
-:is(p, td, footer, h3, .panel-head, .tools, .sort-links) > a:is(:hover, :focus-visible) {
+:is(p, td, h3, .panel-head, .tools, .sort-links) > a:is(:hover, :focus-visible) {
   text-decoration: underline; }
-main, footer, .topbar-inner { max-width: 66rem; margin: 0 auto; padding: 0 1rem; }
+main, .topbar-inner { max-width: 66rem; margin: 0 auto; padding: 0 1rem; }
 main { padding-top: 1.25rem; padding-bottom: 0.5rem; }
 h1 { font-size: 1.5rem; letter-spacing: -0.01em; margin: 0 0 1rem; }
 h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
@@ -64,7 +84,7 @@ h3 { font-size: 1.1rem; margin: 0; }
   border-bottom: 1px solid var(--border); }
 .topbar-inner { display: flex; align-items: center; gap: 1rem; min-height: 3.4rem;
   position: relative; pointer-events: none; }
-.topbar-inner :is(a, button, form) { pointer-events: auto; }
+.topbar-inner :is(a, button, form, details) { pointer-events: auto; }
 .sky-tip { position: absolute; inset: 0; }
 /* Sky: the top bar tinted by homehub's clock (sky_phase). Day to dusk mix a
    hue into the surface, so they work in both themes; night is the same deep
@@ -88,10 +108,6 @@ h3 { font-size: 1.1rem; margin: 0; }
   color-mix(in srgb, var(--sky-hue) 30%, var(--surface)) 75%, transparent); }
 .topbar nav.primary a[aria-current] { color: var(--text); background: color-mix(in srgb,
   color-mix(in srgb, var(--sky-hue) 55%, var(--surface)) 75%, transparent); }
-.topbar .theme { background: color-mix(in srgb,
-  color-mix(in srgb, var(--sky-hue) 30%, var(--surface)) 75%, transparent); }
-.topbar .theme button[aria-pressed="true"] { background: color-mix(in srgb,
-  color-mix(in srgb, var(--sky-hue) 60%, var(--surface)) 75%, transparent); }
 .topbar button.ghost:hover { color: var(--text); }
 .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700;
   font-size: 1.1rem; color: var(--text); text-decoration: none; }
@@ -109,11 +125,23 @@ nav.primary a:hover, nav.primary a[aria-current] { color: var(--text);
 .topbar-tools { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .flow-link { display: inline-flex; padding: 0.35rem; border-radius: 999px; color: var(--muted); }
 .flow-link:hover { color: var(--text); }
-.theme { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-2); }
-.theme button { border: 0; padding: 0.3rem 0.5rem; border-radius: 999px; line-height: 0; }
-.theme button[aria-pressed="true"] { background: var(--surface); color: var(--text);
-  box-shadow: var(--shadow); }
-.theme .icon { width: 1rem; height: 1rem; }
+button.sign-out { padding: 0.35rem; line-height: 0; }
+/* The theme menu: a palette in the bar that opens to the themes (details: no script). */
+.theme-menu { position: relative; display: flex; margin: 0; }
+.theme-menu > summary { display: inline-flex; padding: 0.35rem; line-height: 0; border-radius: 999px;
+  color: var(--muted); cursor: pointer; list-style: none; }
+.theme-menu > summary::-webkit-details-marker { display: none; }
+.theme-menu > summary::marker { content: ""; }
+.theme-menu > summary:hover, .theme-menu[open] > summary { color: var(--text); }
+.theme-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; display: grid;
+  gap: 2px; min-width: 10.5rem; padding: 0.3rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.theme-menu .theme-list > button[name] { display: flex; align-items: center; justify-content: flex-start;
+  gap: 0.6rem; width: 100%; border: 0; border-radius: 7px; background: transparent;
+  color: var(--text); font-weight: 500; text-align: left; }
+.theme-menu .theme-list > button[name]:hover { background: var(--surface-2); }
+.theme-menu .theme-list > button[aria-pressed="true"] { background: var(--surface-2); font-weight: 650; }
+.theme-list button[aria-pressed="true"]::after { content: "✓"; margin-left: auto; color: var(--accent); }
 /* Surfaces */
 .panel, .card { background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem 1.1rem;
@@ -267,6 +295,21 @@ tr.pool-more h3, .fold .panel h3 { margin: 1rem 0 0.4rem; font-size: 0.95rem;
 .status-line { margin: 0; }
 h1.dev { display: flex; }
 .controls + .controls { margin-top: 0.6rem; }
+.controls button, .pick button { white-space: nowrap; }
+/* A device's drop-downs: the labels in a column, the boxes as wide as each other, and the Save
+   of one that's changed beside it (bindPicks). */
+.picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.6rem 1.5rem; margin-top: 0.75rem; }
+.pick { display: flex; gap: 0.5rem; margin: 0; }
+.pick.ready:not(.edited) button:not(.clear), .pick.edited .clear { display: none; }
+.pick label { flex: 1; min-width: 0; display: grid; align-items: center; gap: 0.5rem;
+  grid-template-columns: 3.6rem minmax(0, 1fr); }
+.picks.wide { max-width: 28rem; margin-bottom: 0.6rem; }
+.picks.wide .pick label { grid-template-columns: auto minmax(0, 1fr); }
+.pick label span { color: var(--muted); font-size: 0.85rem; }
+.pick :is(select, input) { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.pick button:not(.clear) { border-color: var(--accent); color: var(--accent); }
+.picks > p { margin: 0; }
 /* Device names in tables open the device: text colour, underlined on hover. */
 a.dev-link { color: inherit; }
 a.dev-link:is(:hover, :focus-visible) { text-decoration: underline; }
@@ -318,14 +361,14 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 details form { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
 /* Small disclosures ("Show as table", "Delete…"): room above, and the same
    turning chevron as the folds, so they read as something that opens. */
-details:not(.fold, .hop-detail) { margin-top: 0.9rem; }
-details:not(.fold, .hop-detail) > summary { display: inline-flex; align-items: center; gap: 0.35rem;
+details:not(.fold, .hop-detail, .theme-menu) { margin-top: 0.9rem; }
+details:not(.fold, .hop-detail, .theme-menu) > summary { display: inline-flex; align-items: center; gap: 0.35rem;
   list-style: none; }
-details:not(.fold, .hop-detail) > summary::-webkit-details-marker { display: none; }
-details:not(.fold, .hop-detail) > summary::before { content: "▸"; transition: transform 0.15s; }
-details:not(.fold, .hop-detail)[open] > summary { margin-bottom: 0.5rem; }
-details:not(.fold, .hop-detail)[open] > summary::before { transform: rotate(90deg); }
-details:not(.fold, .hop-detail) > summary:hover { color: var(--text); }
+details:not(.fold, .hop-detail, .theme-menu) > summary::-webkit-details-marker { display: none; }
+details:not(.fold, .hop-detail, .theme-menu) > summary::before { content: "▸"; transition: transform 0.15s; }
+details:not(.fold, .hop-detail, .theme-menu)[open] > summary { margin-bottom: 0.5rem; }
+details:not(.fold, .hop-detail, .theme-menu)[open] > summary::before { transform: rotate(90deg); }
+details:not(.fold, .hop-detail, .theme-menu) > summary:hover { color: var(--text); }
 .danger-zone { margin-top: 1.25rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
 .danger-zone > summary:hover { color: var(--danger); }
 .danger-body { background: var(--danger-bg); border-radius: 10px; padding: 0.75rem 0.9rem; }
@@ -443,9 +486,9 @@ button.info-btn { padding: 0 0.3rem; margin-left: 0.15rem; }
 .login input { display: block; width: 100%; margin-top: 0.3rem; font-size: 1rem;
   padding: 0.5rem 0.7rem; }
 .login .card button { width: 100%; height: auto; font-size: 1rem; padding: 0.55rem; }
-.login .theme { display: flex; width: max-content; margin: 1rem auto 0; }
+.login .theme-menu { width: max-content; margin: 1rem auto 0; }
+.login .theme-list { right: auto; left: 50%; transform: translateX(-50%); }
 .error { color: var(--danger); }
-footer { padding: 1rem; text-align: center; font-size: 0.85rem; color: var(--muted); }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; }
@@ -454,8 +497,9 @@ footer { padding: 1rem; text-align: center; font-size: 0.85rem; color: var(--mut
   .sort-links { display: inline; }
   body { padding-bottom: calc(4.3rem + env(safe-area-inset-bottom)); }
   body:has(.topbar.viewer) { padding-bottom: env(safe-area-inset-bottom); }  /* no tab bar */
-  .flow-link { display: none; }  /* the screensaver needs a keyboard to leave; the bar its width */
-  main, footer, .topbar-inner { padding: 0 0.75rem; }
+  main, .topbar-inner { padding: 0 0.75rem; }
+  :is(.flow-link, button.sign-out) { padding: 0.6rem; }  /* a bigger target for a finger */
+  .topbar-tools { margin-right: -0.5rem; }
   main { padding-top: 0.9rem; }
   h1 { font-size: 1.3rem; margin-bottom: 0.75rem; }
   nav.primary { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; gap: 0;
@@ -523,6 +567,20 @@ footer { padding: 1rem; text-align: center; font-size: 0.85rem; color: var(--mut
   table.cards tr.dev-row.open { border-bottom: 0; }
   table.cards tr.dev-more { display: block; padding: 0 0.8rem 0.8rem; }
   table.cards tr.dev-more > td { display: block; padding: 0; }
+  /* Its facts a line each, its buttons sharing a line evenly. */
+  .device-facts, tr.dev-more .device-facts { grid-template-columns: 1fr; gap: 0.3rem; }
+  .device-facts > div { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); align-items: baseline; }
+  .device-facts dt { font-size: 0.8rem; }
+  /* An address needs the whole line: its label over it. */
+  .picks.wide .pick { align-items: end; }
+  .picks.wide .pick label { grid-template-columns: 1fr; gap: 0.25rem; }
+  .device-actions { gap: 0.5rem; }
+  .device-actions form { flex: 1 1 7.5rem; max-width: calc(50% - 0.25rem); margin: 0; }
+  .device-actions button { width: 100%; }
+  /* A long profile's name ends in "…" on the details' line. */
+  table.cards td.profile.detail { flex: 1 1 0; min-width: 4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table.cards .dev-row td.seen.detail { white-space: nowrap; }
+  .dev-page a { display: inline-block; padding: 0.3rem 0; }
 }
 /* Phones: renaming takes the card's whole width — the box on its own line,
    Save and Cancel side by side under it — and the status and ⓘ step aside. */
@@ -549,7 +607,6 @@ footer { padding: 1rem; text-align: center; font-size: 0.85rem; color: var(--mut
   /* The top bar's tools stay on one line; "Show all" drops its note. */
   .topbar-tools { gap: 0.3rem; }
   .topbar-tools button { white-space: nowrap; }
-  .theme button { padding: 0.3rem 0.4rem; }
   .switch-link .muted { display: none; }
   .sky-track { min-width: 1rem; margin: 0 0.25rem; }
   .topbar .brand span { display: none; }  /* the moon logo stands in for the name */
@@ -769,7 +826,8 @@ td .bar-track { margin-bottom: 0.2rem; }
    scroll, OK picks a setting. Dark unless Settings says light. */
 @font-face { font-family: "Inter"; src: url("/inter.woff2") format("woff2");
   font-weight: 100 900; font-display: swap; }
-html.tv-page { font-size: 1.3vw; scroll-behavior: smooth; }
+html.tv-page { font-size: 1.3vw; scroll-behavior: smooth; --radius: 4px; }  /* (squarer, as its screensaver's) */
+.tv-page :is(.panel .table-wrap, .dev-icon) { border-radius: 4px; }
 /* Amazon Ember: the TV's own on a Fire TV (Fire OS names it for WebViews), homehub's
    elsewhere; its Display cut for large figures; Inter if neither loads. */
 .tv-page body { font: 0.95rem/1.4 "amazon-ember", "Amazon Ember", "Inter", system-ui, sans-serif;
@@ -840,7 +898,7 @@ main.tv-home { height: calc(100vh - 3.2rem); display: flex; flex-direction: colu
   background: color-mix(in srgb, var(--accent) 18%, var(--surface)); font-weight: 600; }
 .tv-option:focus { outline: 3px solid var(--accent); outline-offset: 3px; }
 
-/* The screensaver (/tv/flow): the canvas fills the screen; the clock and the
+/* Flow (/flow; a TV's /tv/flow): the canvas fills the screen; the clock and the
    house's rates sit in its lower corners, the hint fades in and out. */
 .tv-saver body, main.tv-flow { overflow: hidden; background: #000; }  /* space */
 /* The TV page's rem (1.3vw) fixed at the TV's 960 px wide: a bigger window scales the
@@ -849,7 +907,7 @@ html.tv-saver { font-size: 12.48px; }
 /* At a desk, close up: the temperature and the clock smaller than for across a room */
 .flow-desk .tv-flow :is(.flow-clock time, .flow-weather strong) { font-size: 2rem; }
 .flow-desk .tv-flow .flow-weather .icon { width: 2rem; height: 2rem; }
-.flow-desk .tv-flow .flow-calendar { top: calc(max(2rem, 34px) + 17px); }
+.flow-desk .tv-flow .flow-calendar { top: calc(max(2rem, 34px) + 17px + env(safe-area-inset-top)); }
 main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
 /* A window bigger than the TV's page shows it scaled up (set by flowView's fit) */
 .tv-flow > :is(.flow-top, .flow-calendar, .flow-bar) { zoom: var(--flow-zoom, 1); }
@@ -862,7 +920,8 @@ main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
    bar is always two lines tall (the rates, down over up), the fact up to two, centred. */
 .flow-bar { position: absolute; left: 0; right: 0; bottom: 0; display: grid;
   grid-template-columns: 15em minmax(0, 1fr) 15em; column-gap: 1.5em; align-items: center;
-  padding: 0.35em 1em; font-size: 13px; line-height: 1.3; }
+  padding: 0.35em calc(1em + env(safe-area-inset-right)) calc(0.35em + env(safe-area-inset-bottom)) calc(1em + env(safe-area-inset-left));
+  font-size: 13px; line-height: 1.3; }
 .flow-clock { justify-self: start; }
 .flow-clock time { font-size: 2.6rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1;
   font-variant-numeric: tabular-nums; }
@@ -877,7 +936,9 @@ main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
    tall: the weather left, the theme's name centred (for a few seconds), the hint right. */
 .flow-top { position: absolute; left: 0; right: 0; top: 0; display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 1.5em; align-items: center;
-  padding: 0.35em 1em; font-size: 13px; line-height: 1.3; }
+  /* Clear of a phone's status bar and camera: under them, presses went to the phone. */
+  padding: calc(0.35em + env(safe-area-inset-top)) calc(1em + env(safe-area-inset-right)) 0.35em calc(1em + env(safe-area-inset-left));
+  font-size: 13px; line-height: 1.3; }
 .flow-top > .flow-weather { grid-column: 1; }
 /* Wide rather than tall: the temperature, and beside it the words over one line of the rest. */
 .flow-weather { display: grid; grid-template-columns: auto auto; justify-content: start;
@@ -888,7 +949,7 @@ main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
 .flow-weather span { font-weight: 600; align-self: end; }
 .flow-weather small { color: var(--muted); font-size: 0.85em; align-self: start; white-space: nowrap; }
 /* Under the head, top left: the date and the calendar's today and tomorrow, small. */
-.flow-calendar { position: absolute; top: calc(max(2.6rem, 34px) + 17px); left: 8px; max-width: 19rem; padding: 0.5em 0.8em;
+.flow-calendar { position: absolute; top: calc(max(2.6rem, 34px) + 17px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); max-width: 19rem; padding: 0.5em 0.8em;
   font-size: 11px; line-height: 1.35; }
 .flow-date { margin: 0; font-size: 1.15em; font-weight: 650; }
 .flow-calendar section { margin-top: 0.5em; }
@@ -962,23 +1023,45 @@ main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
 /* At a computer or a tablet: the remote's buttons on the screen (flow.js), sliding out of
    a Controls button at the top bar's right. In zen the button fades while nothing moves.
    It sits over the bar it overlaps, or the bar takes its clicks. */
-.flow-desk .flow-top { padding-right: 8.5em; }
+.flow-desk .flow-top { padding-right: calc(3.6em + env(safe-area-inset-right)); }
 .tv-flow > .flow-menu { z-index: 3; }
 .flow-menu { position: absolute; top: 0; right: 0; display: flex; align-items: center;
-  gap: 0.4em; height: 3.3em; padding: 0 1em;  /* (then the bar's height: flow.js) */
-  font-size: 13px; line-height: 1.3;
-  zoom: var(--flow-zoom, 1); transition: opacity 0.6s ease; }
+  gap: 4px; height: 3.3em;  /* (then the bar's height: flow.js) */
+  padding: env(safe-area-inset-top) calc(var(--flow-edge, 8px) + env(safe-area-inset-right)) 0 8px;
+  font-size: 12px; line-height: 1.2; transition: opacity 0.6s ease; }
 .zen.flow-still:not(.flow-menu-open) .flow-menu { opacity: 0; }
-.flow-menu-items { display: flex; gap: 0.4em; overflow: hidden; max-width: 0; opacity: 0;
+.flow-menu-items { display: flex; gap: 4px; overflow: hidden; max-width: 0; opacity: 0;
   visibility: hidden; transition: max-width 0.3s ease, opacity 0.3s ease, visibility 0s 0.3s; }
 .flow-menu-open .flow-menu-items { max-width: 54em; opacity: 1; visibility: visible;
   transition: max-width 0.3s ease, opacity 0.3s ease; }
-.flow-menu button { flex: none; height: 1.8em; padding: 0 0.9em; border: 0; border-radius: 0.35em;  /* (low, squarish) */
+.flow-menu button { flex: none; height: 24px; padding: 0 8px; border: 0; border-radius: 4px;  /* (low, squarish) */
   background: rgb(11 13 18 / 55%); color: #f2f2ee; font: inherit; font-weight: 600; cursor: pointer;
   backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  -webkit-tap-highlight-color: transparent;
   touch-action: manipulation; }  /* (no double-tap zoom swallowing a quick second tap) */
-.flow-menu button:hover, .flow-menu-toggle[aria-expanded="true"] { background: rgb(60 64 74 / 70%); }
-.flow-menu-min { display: none; flex: none; align-items: center; gap: 0.3em; }
-.flow-highway .flow-menu-min { display: flex; }
-.flow-menu-min span { min-width: 6.6em; text-align: center; font-weight: 600; color: #f2f2ee; text-shadow: 0 1px 3px #000; }
-@media (hover: none) { .flow-menu button { height: max(1.8em, 36px); } }
+/* Lit while pressed. Only a pointer hovers: a finger's last button kept the hover's grey,
+   as if it couldn't be pressed. */
+.flow-menu button:active { background: rgb(96 102 116 / 85%); }
+@media (hover: hover) { .flow-menu button:hover { background: rgb(60 64 74 / 70%); } }
+.flow-menu-steps { display: none; flex: none; align-items: center; gap: 2px; }
+.flow-highway .flow-menu-steps { display: flex; }
+.flow-menu-steps:has([aria-label*=speed]) span { min-width: 5.2em; }
+.flow-menu-steps span { padding: 0 0.4em; text-align: center; font-weight: 600; color: #f2f2ee; text-shadow: 0 1px 3px #000; }
+@media (hover: none) {
+  .flow-menu button { height: 32px; min-width: 34px; }
+  /* Small enough to stand in from the bar's edges, but taking presses for all of the bar's height. */
+  .flow-menu .flow-menu-toggle { height: 24px; min-width: 36px; position: relative; }
+  .flow-menu-toggle::after { content: ''; position: absolute; inset: -8px; }
+}
+/* Too narrow for them along the bar (a phone upright): under it, in rows. Along it they ran
+   off the screen's left. */
+@media (max-width: 640px) {
+  .flow-menu-items { position: absolute; top: calc(100% + 4px); right: calc(var(--flow-edge, 8px) + env(safe-area-inset-right));
+    width: max-content; max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: flex-end; padding: 5px;
+    border-radius: 6px; background: rgb(11 13 18 / 45%); transition: opacity 0.2s ease, visibility 0s 0.2s; }
+  .flow-menu-open .flow-menu-items { max-width: calc(100vw - 16px); transition: opacity 0.2s ease; }
+  .flow-look { position: absolute; top: calc(100% + 92px); left: 0; right: 0; text-align: center; }
+  .flow-bar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 0.8em; }
+  .flow-history { display: none; }
+  .flow-rates { grid-template-columns: auto; }
+}

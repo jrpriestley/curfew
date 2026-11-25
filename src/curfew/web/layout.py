@@ -1,4 +1,4 @@
-"""The page frame: head, top bar, footer, and the shared stylesheet and script."""
+"""The page frame: head, top bar, and the shared stylesheet and script."""
 
 import hashlib
 import html
@@ -46,9 +46,6 @@ FLOW_SCRIPTS = {
 }
 
 
-CERT_NOTE = '<footer><a href="/ca.crt">homehub.local CA certificate</a></footer>'
-
-
 NAV_ITEMS = (
     ("home", "/", "Home"),
     ("devices", "/devices", "Devices"),
@@ -57,38 +54,51 @@ NAV_ITEMS = (
 )
 
 
-THEMES = ("light", "dark", "system")
+# The themes: each one's name, whether it's light or dark, and its --surface for the browser's
+# own bar; System follows the device's.
+THEMES = {
+    "system": ("System", "", ""),
+    "light": ("Light", "light", "#ffffff"),
+    "dark": ("Dark", "dark", "#1c1c1b"),
+    "paper": ("Paper", "light", "#fbf8f2"),
+    "ocean": ("Ocean", "light", "#fbfdfe"),
+    "midnight": ("Midnight", "dark", "#121a2e"),
+    "forest": ("Forest", "dark", "#151d17"),
+}
 
 
 THEME_COOKIE = "curfew_theme"
 
 
 def theme_switch() -> str:
-    """Return the light / dark / system buttons (the page script marks the one in force)."""
+    """Return the theme menu: a palette that opens to every theme by name (the page script
+    marks the one in force)."""
     themes = "".join(
-        submit(
-            icon(theme),
-            "ghost",
-            f' name="theme" value="{theme}" title="{theme.title()} theme" '
-            f'aria-label="{theme.title()} theme"',
-        )
-        for theme in THEMES
+        f'<button type="submit" name="theme" value="{theme}">{name}</button>'
+        for theme, (name, _kind, _bar) in THEMES.items()
     )
-    return f'<form method="post" action="/theme" class="theme" aria-label="Theme">{themes}</form>'
+    return (
+        '<details class="theme-menu"><summary title="Theme" aria-label="Theme">'
+        f"{icon('palette')}</summary>"
+        f'<form method="post" action="/theme" class="theme-list">{themes}</form></details>'
+    )
 
 
-# The TV's screensaver in this browser, coming back to Home (any key, or a click)
+FLOW = "/flow"  # the house's traffic flowing across the screen (pages/flow.py)
 FLOW_LINK = (
-    '<a class="flow-link" href="/tv/flow?back=%2F" title="Screensaver" aria-label="Screensaver">'
-    f"{icon('tv')}</a>"
+    f'<a class="flow-link" href="{FLOW}?back=%2F" title="Flow" aria-label="Flow">'
+    f"{icon('flow')}</a>"
 )
+
+
+SIGN_OUT = submit(icon("exit"), "ghost sign-out", ' title="Sign out" aria-label="Sign out"')
 
 
 def chrome(
     active: str, content: str, sky: tuple[str, str] = ("day", ""), viewer: bool = False
 ) -> str:
     """Return the signed-in page frame: top bar (brand, sections, the screensaver, theme,
-    sign out), the page content and the footer. ``active`` is the current NAV_ITEMS key;
+    sign out) and the page content. ``active`` is the current NAV_ITEMS key;
     ``sky`` (from sky_phase) tints the top bar. A read-only account (``viewer``) has
     Home alone, so no sections."""
     nav = "".join(
@@ -108,9 +118,9 @@ def chrome(
         f"{sections}{sky_track(sky[0])}"
         f'<div class="topbar-tools">{FLOW_LINK}'
         f"{theme_switch()}"
-        f"{post_form('/logout', {}, submit('Sign out', 'ghost'))}</div></div></header>"
+        f"{post_form('/logout', {}, SIGN_OUT)}</div></div></header>"
         # The page script refreshes the whole page every data-every seconds.
-        f'<main data-every="{REFRESH_PAGE}">{content}</main>{CERT_NOTE}'
+        f'<main data-every="{REFRESH_PAGE}">{content}</main>'
     )
 
 
@@ -159,6 +169,6 @@ def render_login(error: str = "") -> str:
         '<label>User <input type="text" name="user" autocomplete="username" required></label>'
         '<label>Password <input type="password" name="password" '
         'autocomplete="current-password" required></label>'
-        f"<button type=submit>Sign in</button></form></div>{theme_switch()}</main>{CERT_NOTE}"
+        f"<button type=submit>Sign in</button></form></div>{theme_switch()}</main>"
     )
     return page(f"{APP_NAME} · homehub", body, script=True)

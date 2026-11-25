@@ -384,72 +384,183 @@
     wheels(p, x, y, LTD_WHEELS, 16, 4.6, turn, 'cap');
     return {path: LTD_BODY, x: x, y: y, wheels: wheelsOf(LTD_WHEELS, 16, 4.6)};
   }
+  // A New York cab of the seventies, as in Taxi: a Checker Marathon, tall and round-shouldered,
+  // its shape the fifties', yellow with a band of checks along its side and a lit sign on its
+  // roof, bumpers like girders.
+  var TAXI_WHEELS = [15.9, 57];
+  var TAXI_BODY = traced([['M', 1.6, 18.4], ['L', 0.8, 15], ['Q', 0.3, 10.6, 2.6, 9.6], ['Q', 6, 8.2, 13.2, 8.3],
+    ['L', 18.6, 3.4], ['Q', 20, 2, 22.6, 1.9], ['Q', 31, 1.4, 38.8, 1.9], ['Q', 41, 2, 42.2, 3.1], ['L', 47, 8.3],
+    ['Q', 56, 7.9, 61.8, 8.8], ['Q', 67, 9.6, 67.6, 12], ['L', 68.2, 15], ['L', 67.6, 18.4]]);
+  var TAXI_QUARTER = traced([['M', 16.6, 8], ['L', 19.9, 4.4], ['Q', 20.8, 3.5, 22, 3.4], ['L', 22.8, 3.4], ['L', 22.8, 8]]);
+  var TAXI_BACK = traced([['M', 24.2, 8], ['L', 24.2, 3.3], ['L', 32.4, 3.2], ['L', 32.4, 8]]);
+  var TAXI_FRONT = traced([['M', 33.8, 8], ['L', 33.8, 3.2], ['L', 39.8, 3.3], ['Q', 40.9, 3.4, 41.6, 4.1], ['L', 45.2, 8]]);
+  var CHECK = 1.15;
+  function taxi(p, x, ground, paint, turn) {
+    var y = ground - 22;
+    shadow(p, x + 34.5, ground, 33);
+    p.save();
+    p.translate(x, y);
+    p.fillStyle = gloss(p, 1.6, 18.4, paint);
+    p.fill(TAXI_BODY);
+    p.save();
+    p.clip(TAXI_BODY);
+    for (var c = 0; c * CHECK < 66; c += 1) {
+      rect(p, 1.4 + c * CHECK, 9.5 + (c % 2) * CHECK, CHECK, CHECK, '#16140f');
+    }
+    p.restore();
+    [TAXI_QUARTER, TAXI_BACK, TAXI_FRONT].forEach(function (pane) {
+      glassOf(p, pane, 3.2, 8);
+      p.strokeStyle = 'rgba(232, 234, 240, 0.8)';
+      p.lineWidth = 0.28;
+      p.stroke(pane);
+    });
+    rect(p, 40.3, 3.4, 0.35, 4.6, '#c4c8d0');
+    door(p, 23.4, 33.1, 8.2, 16.6);
+    door(p, 33.1, 46.4, 8.2, 16.6);
+    handle(p, 24.6, 12.3);
+    handle(p, 34.4, 12.3);
+    text(p, 'TAXI', 39.4, 15.6, 2.5, '#16140f');
+    // The fenders' bulge over each wheel.
+    p.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+    p.lineWidth = 0.4;
+    TAXI_WHEELS.forEach(function (wx) {
+      p.beginPath();
+      p.arc(wx, 17.2, 7.2, Math.PI * 1.08, -Math.PI * 0.08);
+      p.stroke();
+    });
+    trim(p, 9, 46.6, 8.6);
+    rocker(p, 2, 17, 65.4);
+    arches(p, TAXI_WHEELS, 17.2, 4.8);
+    bumper(p, -1.2, 14.6, 4.6, 2.8);
+    bumper(p, 65.6, 14.6, 4.6, 2.8);
+    rect(p, 0.4, 13.4, 1.1, 3.6, '#d4d8e0');
+    rect(p, 67.8, 13.4, 1.1, 3.6, '#d4d8e0');
+    rect(p, 0.7, 10.6, 1.3, 2.6, '#c81818');
+    circle(p, 66.2, 11.4, 1.5, '#b4b8c2');
+    circle(p, 66.5, 11.4, 1.1, '#f4f0dc');
+    rect(p, 66, 13.2, 1.3, 0.9, '#f0a020');
+    rect(p, 28.6, 1, 8.8, 0.8, '#3a3830');
+    p.fillStyle = vertical(p, -1.8, 1.2, [[0, '#fff6d0'], [1, '#ffd24a']]);
+    p.fillRect(29.2, -1.8, 7.6, 2.9);
+    text(p, 'TAXI', 33, 0.6, 2.5, '#2a2008');
+    p.restore();
+    wheels(p, x, y, TAXI_WHEELS, 17.2, 4.8, turn, 'cap');
+    return {path: TAXI_BODY, x: x, y: y, wheels: wheelsOf(TAXI_WHEELS, 17.2, 4.8)};
+  }
   // A DMC-12 as in Back to the Future Part II: a low steel wedge, louvres down its back, a
   // gullwing door, and the time machine's works: vents rising off its tail, the reactor
   // between them, cables along its side. On its wheels on an everyday road; over the future's
   // it flies, its wheels folded flat beneath it (`flyingDmc`).
-  var DMC_WHEELS = [13.4, 46], DMC_FLUX = [120, 200, 255];
-  var DMC_BODY = traced([['M', 1.2, 16.8], ['L', 0.6, 12], ['L', 1.4, 10], ['L', 4, 9.4], ['L', 19.6, 5.6], ['Q', 21.4, 5.2, 23, 5.2],
-    ['L', 27, 5.2], ['Q', 28.8, 5.2, 30, 5.8], ['L', 40, 9.9], ['L', 55, 12], ['Q', 57.2, 12.4, 57.3, 13.2], ['L', 57.2, 15.6],
-    ['Q', 57.2, 16.6, 56, 16.8]]);
-  var DMC_GLASS = traced([['M', 17, 9.5], ['L', 22.4, 6.4], ['L', 28.6, 6.3], ['L', 36.8, 9.7]]);
-  var DMC_VENT = traced([['M', -1.6, 7.6], ['L', 4.4, 3.8], ['L', 9, 5], ['L', 10.4, 8.2], ['L', 2, 10.4]]);
+  var DMC_WHEELS = [13, 45.8], DMC_FLUX = [120, 200, 255];
+  var DMC_BODY = traced([['M', 1.8, 17], ['L', 1, 14.6], ['L', 0.9, 12.4], ['L', 1.9, 9.5], ['L', 3.2, 8.9], ['L', 6.4, 8.8], ['L', 20, 5.6],
+    ['Q', 21.6, 5.1, 23.4, 5.05], ['L', 27.2, 5.1], ['Q', 28.6, 5.2, 29.8, 5.7], ['L', 38.4, 9.4], ['L', 53.4, 11.4],
+    ['Q', 56.2, 11.8, 56.9, 12.7], ['L', 57.5, 14.4], ['L', 56.8, 17]]);
+  var DMC_QUARTER = traced([['M', 13.2, 9.1], ['L', 18.9, 6.7], ['L', 17.2, 9.2]]);
+  var DMC_GLASS = traced([['M', 18.4, 9.2], ['L', 20.7, 6.4], ['Q', 21, 6.1, 21.6, 6.1], ['L', 27.8, 6.1], ['Q', 28.4, 6.1, 29, 6.4], ['L', 35.8, 9.5]]);
+  var DMC_VENT = traced([['M', 10.4, 8], ['L', 3.4, 9.1], ['L', -0.2, 5.4], ['L', 6.2, 3.4]]);
+  var DMC_FAR_VENT = traced([['M', 10.6, 6.8], ['L', 4, 7.6], ['L', 1.3, 4.9], ['L', 7.4, 2.9]]);
   var DMC_REACTOR = new Path2D();
-  DMC_REACTOR.rect(11, 5, 2.6, 3);
+  DMC_REACTOR.rect(11.2, 4.4, 2.5, 3.4);
   var DMC_OUTLINE = new Path2D();
-  [DMC_BODY, DMC_VENT, DMC_REACTOR].forEach(function (part) { DMC_OUTLINE.addPath(part); });
+  [DMC_BODY, DMC_FAR_VENT, DMC_VENT, DMC_REACTOR].forEach(function (part) { DMC_OUTLINE.addPath(part); });
   function dmcBody(p) {
-    p.fillStyle = '#c9ccd2';
-    p.fill(DMC_REACTOR);
-    rect(p, 11, 5.9, 2.6, 0.4, '#6a6e78');
-    rect(p, 11.4, 5, 1.8, 0.4, '#3a3c44');
-    p.fillStyle = vertical(p, 5.2, 16.8, [[0, '#d8dbe0'], [0.35, '#b4b8c0'], [0.62, '#9ca0a8'], [1, '#6e727a']]);
+    p.fillStyle = '#2c2f36';
+    p.fill(DMC_FAR_VENT);
+    dmcReactor(p);
+    // Brushed steel: no gloss, a pale band along the shoulder.
+    p.fillStyle = vertical(p, 5.05, 17, [[0, '#c8ccd2'], [0.3, '#b2b6bd'], [0.4, '#d6d9de'], [0.46, '#a6aab2'], [0.64, '#8f939b'], [0.66, '#aaaeb6'], [1, '#787c84']]);
     p.fill(DMC_BODY);
-    glassOf(p, DMC_GLASS, 6.3, 9.7);
+    p.save();
+    p.clip(DMC_BODY);
+    // The bumpers and the sill, grey; the black strip round it all.
+    rect(p, 0, 12.5, 4.4, 5, '#4c4f56');
+    rect(p, 53.2, 11.6, 5, 6, '#4c4f56');
+    rect(p, 0, 15.7, 58, 1.4, '#2a2c32');
+    rect(p, 0, 12.6, 58, 0.75, '#17181d');
+    p.restore();
+    dmcLouvres(p);
+    [DMC_QUARTER, DMC_GLASS].forEach(function (pane) {
+      p.fillStyle = vertical(p, 6.1, 9.5, [[0, '#6f8aa6'], [1, '#141c28']]);
+      p.fill(pane);
+      p.strokeStyle = '#15161b';
+      p.lineWidth = 0.5;
+      p.stroke(pane);
+    });
     // The little window that opens, within the window.
-    p.strokeStyle = '#1c1e24';
-    p.lineWidth = 0.3;
-    p.stroke(DMC_GLASS);
-    p.strokeRect(24.4, 8, 5.6, 1.5);
+    p.lineWidth = 0.28;
+    p.strokeRect(22.2, 7.7, 7.2, 1.5);
+    // The gullwing door, up into the roof.
     p.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    p.lineWidth = 0.3;
     p.beginPath();
-    for (var louvre = 0; louvre < 5; louvre += 1) {
-      segment(p, 6.4 + louvre * 2.3, 9.6 - louvre * 0.5, 8.8 + louvre * 2.3, 8.5 - louvre * 0.56);
-    }
-    // The door, up into the roof.
-    segment(p, 21.6, 5.3, 18.2, 9.8);
-    p.moveTo(18.2, 9.8);
-    p.lineTo(19.4, 15.6);
-    p.lineTo(37, 15.6);
-    p.lineTo(37.6, 10);
+    p.moveTo(20.4, 5.5);
+    p.lineTo(17.8, 9.4);
+    p.lineTo(18.6, 15.5);
+    p.lineTo(36.6, 15.5);
+    p.lineTo(37.4, 11.6);
+    p.lineTo(36.4, 9.2);
+    // The hood's and the nose's seams.
+    segment(p, 38.6, 10, 53, 12);
+    segment(p, 53.2, 11.5, 53.2, 15.6);
     p.stroke();
-    rect(p, 1, 12.6, 56, 0.8, '#1c1e24');
-    rect(p, 1.4, 15.4, 55.4, 1.4, '#2a2c32');
+    rect(p, 19.4, 13.5, 2.2, 0.6, '#3a3d44');
     dmcWorks(p);
-    rect(p, 0.5, 10.6, 1, 1.8, '#c81818');
-    rect(p, 54.8, 13.6, 1.6, 0.8, '#f0a020');
-    rect(p, 56.4, 12.8, 0.8, 1.1, '#f4f0dc');
+    rect(p, 0.9, 10.4, 0.9, 1.9, '#c81818');
+    rect(p, 54, 13.6, 1.4, 0.7, '#f0a020');
+    rect(p, 56, 12.9, 0.9, 0.9, '#f4f0dc');
   }
+  // Black slats down its back window, stepping out of its outline.
+  function dmcLouvres(p) {
+    p.fillStyle = '#1b1c21';
+    for (var slat = 0; slat < 6; slat += 1) {
+      var lx = 8 + slat * 2, ly = 8.45 - slat * 0.47;
+      p.beginPath();
+      p.moveTo(lx, ly + 0.5);
+      p.lineTo(lx + 0.2, ly - 0.35);
+      p.lineTo(lx + 2, ly - 0.35);
+      p.lineTo(lx + 2, ly + 0.1);
+      p.fill();
+    }
+  }
+  function dmcReactor(p) {
+    p.fillStyle = vertical(p, 4.4, 7.8, [[0, '#f2f2ee'], [1, '#b8bac0']]);
+    p.fill(DMC_REACTOR);
+    rect(p, 11.5, 3.8, 1.9, 0.7, '#8c9098');
+    rect(p, 11.2, 5.4, 2.5, 0.35, '#70747e');
+    rect(p, 11.2, 6.6, 2.5, 0.35, '#70747e');
+  }
+  // The time machine's works: the vents on its tail, their grilles up and back, and the
+  // cables along under its windows with the coils' light.
   function dmcWorks(p) {
-    p.fillStyle = vertical(p, 3, 10, [[0, '#7c808a'], [1, '#30333c']]);
+    var side = p.createLinearGradient(3, 3.4, 6, 9);
+    side.addColorStop(0, '#a4a8b0');
+    side.addColorStop(1, '#5c6068');
+    p.fillStyle = side;
     p.fill(DMC_VENT);
-    p.strokeStyle = '#181a20';
+    p.strokeStyle = '#2c2f36';
     p.lineWidth = 0.35;
+    p.stroke(DMC_VENT);
+    p.lineWidth = 0.8;
+    p.strokeStyle = '#17181d';
     p.beginPath();
-    for (var slat = 0; slat < 4; slat += 1) {
-      segment(p, 0.6 + slat * 1.9, 6.8 - slat * 0.9, 3.4 + slat * 1.9, 9.4 - slat * 0.6);
+    segment(p, -0.1, 5.5, 6.2, 3.5);
+    p.stroke();
+    p.lineWidth = 0.3;
+    p.beginPath();
+    for (var fin = 1; fin < 4; fin += 1) {
+      segment(p, 0.2 + fin * 1.55, 5 - fin * 0.48, 3.6 + fin * 1.6, 8.7 - fin * 0.25);
     }
     p.stroke();
-    // Cables, and the coils' light between them.
-    p.strokeStyle = '#3c4658';
-    p.lineWidth = 0.5;
+    p.strokeStyle = '#3a3e48';
+    p.lineWidth = 0.45;
     p.beginPath();
-    p.moveTo(3, 11);
-    p.quadraticCurveTo(20, 11.8, 38, 11.2);
-    p.lineTo(52, 12.4);
+    p.moveTo(6, 9.4);
+    p.quadraticCurveTo(8, 10.5, 14, 10.5);
+    p.lineTo(38, 10.6);
+    p.lineTo(50, 12);
     p.stroke();
-    for (var coil = 5; coil < 52; coil += 6) {
-      rect(p, coil, 11, 1.5, 0.7, css(DMC_FLUX, 0.9));
+    for (var coil = 21; coil < 36; coil += 3.4) {
+      rect(p, coil, 10.35, 1.2, 0.45, css(DMC_FLUX, 0.9));
     }
   }
   function dmc(p, x, ground, paint, turn) {
@@ -460,7 +571,7 @@
     dmcBody(p);
     arches(p, DMC_WHEELS, 16.3, 4.3);
     p.restore();
-    wheels(p, x, y, DMC_WHEELS, 16.3, 4.3, turn, 'cap');
+    wheels(p, x, y, DMC_WHEELS, 16.3, 4.3, turn, 'turbine');
     return {path: DMC_OUTLINE, x: x, y: y, wheels: wheelsOf(DMC_WHEELS, 16.3, 4.3)};
   }
   var DMC_FLIES = 8;
@@ -722,7 +833,21 @@
     cap.addColorStop(1, '#787e8a');
     circle(p, cx, my, r * 0.34, cap);
   }
-  var RIMS = {steel: steelRim, cap: hubcap};
+  // A grey alloy wheel of thin spokes in a bright rim.
+  function turbineRim(p, cx, my, r, turn) {
+    circle(p, cx, my, r * 0.72, '#c2c6cc');
+    circle(p, cx, my, r * 0.63, '#34373e');
+    p.strokeStyle = '#9ca0a8';
+    p.lineWidth = r * 0.06;
+    p.beginPath();
+    for (var s = 0; s < 14; s += 1) {
+      var a = turn + s * 0.4488;
+      segment(p, cx + Math.cos(a) * r * 0.2, my + Math.sin(a) * r * 0.2, cx + Math.cos(a) * r * 0.63, my + Math.sin(a) * r * 0.63);
+    }
+    p.stroke();
+    circle(p, cx, my, r * 0.22, '#8c9098');
+  }
+  var RIMS = {steel: steelRim, cap: hubcap, turbine: turbineRim};
   function whitewall(p, cx, my, r, turn) {
     p.strokeStyle = '#ecebe4';
     p.lineWidth = r * 0.22;
@@ -1404,7 +1529,7 @@
   // ---------------------------------------------------------- all of them --
   // Each kind's drawer, and how long and tall it is and how high its head and tail lights.
   var DRAWERS = {
-    continental: continental, monte: monte, nova: nova, rabbit: rabbit, ltd: ltd, dmc: dmc, flyingDmc: flyingDmc, sedan: sedan, wagon: wagon, pickup: pickup, semi: semi, blower: blower, bike: bike, buggy: buggy,
+    continental: continental, monte: monte, nova: nova, rabbit: rabbit, ltd: ltd, taxi: taxi, dmc: dmc, flyingDmc: flyingDmc, sedan: sedan, wagon: wagon, pickup: pickup, semi: semi, blower: blower, bike: bike, buggy: buggy,
     raider: raider, rig: rig, wedge: wedge, bubble: bubble, hover: hover, hauler: hauler, ebike: ebike,
     armoured: armoured, glowcoupe: glowcoupe, atomcar: atomcar, atomvan: atomvan,
   };
@@ -1415,6 +1540,7 @@
     dmc: {length: 57.6, height: 18.6, head: 7.3, tail: 9.1},
     flyingDmc: {length: 57.6, height: 30.6, head: 19.3, tail: 21.1},
     ltd: {length: 72.6, height: 18.7, head: 10.1, tail: 9.9},
+    taxi: {length: 69, height: 24, head: 10.6, tail: 10.2, sign: [33, 22.4]},
     rabbit: {length: 52.4, height: 19, head: 9.7, tail: 10.2},
     sedan: {length: 70.5, height: 18.6, head: 9.5, tail: 10.1},
     wagon: {length: 74.5, height: 18.4, head: 9.5, tail: 10.3},
@@ -1438,12 +1564,13 @@
   // Who drives where, and in what paint.
   var EVERYDAY = ['sedan', 'wagon', 'pickup', 'semi', 'monte', 'nova', 'rabbit', 'ltd', 'dmc'];
   // Those always in their own colour.
-  var OWN_PAINT = {nova: [78, 106, 72], rabbit: [236, 236, 230], ltd: [14, 14, 17]};
+  var OWN_PAINT = {nova: [78, 106, 72], rabbit: [236, 236, 230], ltd: [14, 14, 17], taxi: [244, 178, 22]};
   var WASTED = ['blower', 'bike', 'buggy', 'raider', 'buggy', 'raider', 'rig'], RUST = [[140, 74, 40], [110, 92, 70], [96, 60, 44], [150, 110, 60]];
   var ATOMS = ['atomcar', 'atomcar', 'atomvan'], PASTEL = [[104, 184, 176], [232, 146, 124], [222, 184, 84], [150, 170, 220], [196, 52, 58]];
   var GANGS = ['armoured', 'glowcoupe', 'armoured', 'glowcoupe', 'semi', 'bike'], DUSK = [[40, 42, 48], [150, 30, 90], [30, 110, 130], [180, 150, 40], [90, 90, 96]];
   var SLEEK = ['wedge', 'bubble', 'hover', 'wedge', 'hover', 'hauler', 'ebike', 'flyingDmc'], SHEEN = [[236, 240, 244], [40, 44, 52], [180, 188, 200], [30, 140, 150], [220, 100, 40]];
   var TRAFFIC = {
+    city: {kinds: EVERYDAY.concat(['taxi', 'taxi', 'taxi', 'taxi', 'taxi', 'taxi']), paints: COLOURS},
     wasteland: {kinds: WASTED, paints: RUST},
     future: {kinds: SLEEK, paints: SHEEN},
     badlands: {kinds: GANGS, paints: DUSK},
@@ -1455,7 +1582,7 @@
   // laid where its ride puts it, between them, it would shimmer. Its shadow and wheels are
   // drawn live round it. Those that move as they go (the floating
   // ones, the bikes, the reactors' pulse) are drawn whole every frame.
-  var STILL = {continental: 1, monte: 1, nova: 1, rabbit: 1, ltd: 1, dmc: 1, sedan: 1, wagon: 1, pickup: 1, semi: 1, blower: 1, buggy: 1, raider: 1, rig: 1, armoured: 1, glowcoupe: 1};
+  var STILL = {continental: 1, monte: 1, nova: 1, rabbit: 1, ltd: 1, taxi: 1, dmc: 1, sedan: 1, wagon: 1, pickup: 1, semi: 1, blower: 1, buggy: 1, raider: 1, rig: 1, armoured: 1, glowcoupe: 1};
   var bodies = {}, held = null, PAD = 8, FINER = sharp ? 1.5 : 2;
   function bodyOf(v) {
     var key = v.kind + '|' + v.paint, have = bodies[key], meta = VEHICLES[v.kind];
@@ -1617,20 +1744,21 @@
   }
   // One whose speed ours has come close to would stay by us for minutes, keeping others off
   // the road: after LINGER seconds it picks up, or drops back if it's the slower.
-  var MIN_GAP = 55, LINGER = 5;
+  var MIN_GAP = 55, LINGER = 5, FASTEST = 0.75 * TOP;
   function dontLinger(seconds) {
     var gap = other.speed - velocity;
     other.beside = Math.abs(gap) < MIN_GAP ? other.beside + seconds : 0;
     if (other.beside > LINGER) {
-      var slower = gap < 0 && velocity > MIN_GAP;
+      var slower = (gap < 0 || other.speed > FASTEST) && velocity > MIN_GAP;
       other.speed += (slower ? -1 : 1) * 25 * seconds;
     }
   }
-  // A new vehicle, at a speed well off ours, or none for now: none in a glitch, in the biomes nobody drives, or
+  // A new vehicle, at a speed well off ours but no more than FASTEST (180 km/h: at any more
+  // than that ours passes everyone), or none for now: none in a glitch, in the biomes nobody drives, or
   // after the bombs till the next biome.
   function newOther() {
-    var gap = 65 + 85 * Math.random(), ahead = velocity > 120 && Math.random() < 0.5;
-    var theirs = ahead ? Math.max(40, velocity - gap) : velocity + gap;
+    var gap = 65 + 85 * Math.random(), ahead = velocity > 120 && (velocity + gap > FASTEST || Math.random() < 0.5);
+    var theirs = ahead ? Math.max(40, Math.min(FASTEST, velocity - gap)) : velocity + gap;
     var where = biomeAt(odometer + (ahead ? cols + 10 : 0), 1);
     if (glitch || NO_TRAFFIC[where] || (blast && blast.boom && spanAt(odometer) === blast.span)) {
       otherDue = 2;

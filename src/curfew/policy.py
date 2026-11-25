@@ -99,6 +99,18 @@ def pending_macs(
     ]
 
 
+def put_in_profile(state: dict, mac: str, profile: dict | None) -> None:
+    """Make ``profile`` (None: no profile) the one a device is in."""
+    if not MAC_RE.match(mac) or is_router(mac):
+        raise ValueError("Bad device.")
+    for other in state["profiles"].values():
+        if mac in other.get("members", []):
+            other["members"].remove(mac)
+    if profile is not None:
+        profile.setdefault("members", []).append(mac)
+        state["devices"].setdefault(mac, {})["known"] = True
+
+
 def apply_profile_action(state: dict, fields: dict[str, str]) -> str | None:
     """Apply one profile form post in place.
 
@@ -127,9 +139,15 @@ def apply_profile_action(state: dict, fields: dict[str, str]) -> str | None:
         return None
 
     profile_id = fields.get("id", "")
+    if action == "set_profile" and not profile_id:
+        put_in_profile(state, fields.get("mac", "").lower(), None)
+        return None
     if not ID_RE.match(profile_id) or profile_id not in profiles:
         raise ValueError("Unknown profile.")
     profile = profiles[profile_id]
+    if action == "set_profile":
+        put_in_profile(state, fields.get("mac", "").lower(), profile)
+        return None
     if action == "rename":
         name = fields.get("name", "").strip()[:MAX_NAME]
         if not name:
@@ -155,16 +173,6 @@ def apply_profile_action(state: dict, fields: dict[str, str]) -> str | None:
                 site = normalize_site(text)
                 if site not in sites:
                     sites.append(site)
-    elif action in {"add_member", "remove_member"}:
-        mac = fields.get("mac", "").lower()
-        if not MAC_RE.match(mac) or is_router(mac):
-            raise ValueError("Bad device.")
-        for other in profiles.values():
-            if mac in other.get("members", []):
-                other["members"].remove(mac)
-        if action == "add_member":
-            profile.setdefault("members", []).append(mac)
-            state["devices"].setdefault(mac, {})["known"] = True
     elif action == "add_schedule":
         days = [index for index in range(7) if fields.get(f"day{index}") == "1"]
         start, end = fields.get("start", ""), fields.get("end", "")

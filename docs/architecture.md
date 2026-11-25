@@ -55,14 +55,14 @@ sites, in Pi-hole. A web page, a command line and a TV app share one saved state
 | `weather.py`, `events.py` | the TV screensaver's weather (Open-Meteo) and family calendar (iCalendar) |
 | `cache.py` | `Recent`: a value worked out at most every so often, shared by the page's threads |
 | `wake.py` | wake-on-LAN |
-| `web/` | the page; see [web.md](web.md) and [tv.md](tv.md) |
+| `web/` | the page; see [web.md](web.md), [flow.md](flow.md) and [tv.md](tv.md) |
 | `data/` | `doh-domains.txt`, `internet-facts.txt` (the screensaver's facts) |
 
 ## Saved state
 
 In `[paths] state_dir` (`/var/lib/homehub-router/`):
 
-- `devices.json`: `devices` by MAC (name, `blocked`, `known`, `allowed`, guest expiry…),
+- `devices.json`: `devices` by MAC (name, `kind` if its type is set by hand, `blocked`, `known`, `allowed`, guest expiry…),
   `profiles` by 8-hex id (name, members, schedules, `paused`, `pause_until`,
   `bonus_until`/bonus start, sites), `settings` (`block_private`, `block_unknown`) and
   `dhcp` (classes, subnet options, pools, fixed hosts). Written only by `change_state`.
@@ -71,9 +71,10 @@ In `[paths] state_dir` (`/var/lib/homehub-router/`):
   (30 days), `speed` tests (kept for good).
 - `pihole-sync.json`: the last plan written to Pi-hole, so unchanged plans aren't
   rewritten.
+- `sessions.json`: who is signed in to the page, each token as its hash, root's alone.
 - `tv-key`: the TV key (`curfew tv-link`; see [tv.md](tv.md)).
 - `tv-frames.jsonl`: the screensavers' frame reports, a line a minute while one shows
-  (rotated to `.1` past 1 MB; see [tv.md](tv.md)).
+  (rotated to `.1` past 1 MB; see [flow.md](flow.md)).
 - `speedtest-started`: touched as a speed test begins (Orbit's probe, for 120 s after).
 
 ## Settings

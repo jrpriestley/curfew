@@ -59,6 +59,7 @@ def test_block_by_name_ip_or_mac(house, capsys) -> None:
     assert run(capsys, "unblock", "10.7.1.6")[0] == 0
     assert load_state()["devices"]["a8:bb:cc:dd:ee:02"]["blocked"] is False
     assert run(capsys, "rename", "a8:bb:cc:dd:ee:03", "Kitchen TV")[0] == 0
+    assert run(capsys, "type", "Kitchen TV", "computer")[0] == 0
     assert load_state()["devices"]["a8:bb:cc:dd:ee:03"]["name"] == "Kitchen TV"
 
 

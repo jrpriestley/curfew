@@ -950,6 +950,20 @@ function flowView(canvas) {
   var veil = null;
   var LOOK_NAMES = {space: 'Orbit', simple: 'Still', town: 'Neighbourhood', forest: 'Forest', highway: 'Highway'};
   canvas.switchLook = function (look) {
+    throughBlack(function (main, name) { becomeLook(look, main, name); });
+  };
+  // Highway's next biome by name, or (-1) the one before, for trying them out.
+  window.flowBiome = function (way) {
+    if (!scene || !scene.toBiome || canvas.closest('main').classList.contains('switching')) {
+      return;
+    }
+    throughBlack(function (main, name) {
+      name.textContent = scene.toBiome(way);
+      replay(name);
+    });
+  };
+  // The scene fades to black, `change` happens unseen, and it fades back.
+  function throughBlack(change) {
     var main = canvas.closest('main'), name = main.querySelector('.flow-look');
     if (!veil) {
       veil = document.createElement('div');
@@ -958,9 +972,18 @@ function flowView(canvas) {
       void veil.offsetWidth;
     }
     main.classList.add('switching');
-    setTimeout(function () { becomeLook(look, main, name); }, 600);
-  };
+    setTimeout(function () {
+      change(main, name);
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { main.classList.remove('switching'); });
+      });
+    }, 600);
+  }
   function becomeLook(look, main, name) {
+    if (staleDevices) {
+      location.reload();  // (the cookie says which theme)
+      return;
+    }
     simple = look === 'simple';
     town = look === 'town';
     forest = look === 'forest';
@@ -983,9 +1006,6 @@ function flowView(canvas) {
     sky();
     name.textContent = LOOK_NAMES[look];
     replay(name);
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () { main.classList.remove('switching'); });
-    });
   }
   // Its CSS animation, run again.
   function replay(element) {
@@ -1642,32 +1662,51 @@ function flowView(canvas) {
   }
 
   // ------------------------------------------------------------ the report --
-  // Once a minute while it shows, how smoothly it ran, sent to curfew (/tv/frames) so the
+  // Once a minute while it shows (the first after REPORT_FIRST, and one as it's left), how smoothly it ran, sent to curfew (/tv/frames) so the
   // TVs' frame rates can be read on homehub: the frames drawn, their spacing, what each
-  // cost the script (the rest of a late frame is the GPU's), and the pace's drops.
-  var REPORT_EVERY = 60000, REPORT_PATH = '/tv/frames', lastDrawn = 0;
-  var report = {since: before, gaps: [], costs: [], drops: 0};
+  // cost the script (the rest of a late frame is the GPU's), the pace's drops, how often the
+  // screen itself refreshes (`tick`: a TV left at 24 or 50 Hz can't show 30 evenly) and the
+  // keys pressed.
+  var REPORT_EVERY = 60000, REPORT_FIRST = 15000, REPORT_LEAST = 5000, REPORT_PATH = '/tv/frames', lastDrawn = 0, lastTick = 0, reported = false;
+  var report = newReport(before);
+  function newReport(time) {
+    return {since: time, gaps: [], costs: [], ticks: [], drops: 0};
+  }
+  function noteTick(time) {
+    if (report.ticks.length < 600) {
+      report.ticks.push(time - lastTick);
+    }
+    lastTick = time;
+  }
   function noteFrame(time, cost) {
     var gap = time - lastDrawn;
     lastDrawn = time;
     // A long gap is the page having been hidden: not a frame's lateness.
     if (gap > 5000) {
-      report = {since: time, gaps: [], costs: [], drops: 0};
+      report = newReport(time);
       return;
     }
     report.gaps.push(gap);
     report.costs.push(cost);
-    if (time - report.since >= REPORT_EVERY) {
+    if (time - report.since >= (reported ? REPORT_EVERY : REPORT_FIRST)) {
       sendReport(time);
-      report = {since: time, gaps: [], costs: [], drops: 0};
+      report = newReport(time);
+      reported = true;
     }
   }
+  window.addEventListener('pagehide', function () {
+    var time = performance.now();
+    if (time - report.since > REPORT_LEAST && time - lastDrawn < 5000) {
+      sendReport(time);
+    }
+  });
   function percentile(sorted, share) {
     return sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * share))] * 10) / 10 : 0;
   }
   function sendReport(time) {
     var gaps = report.gaps.slice().sort(function (a, b) { return a - b; });
     var costs = report.costs.slice().sort(function (a, b) { return a - b; });
+    var ticks = report.ticks.slice().sort(function (a, b) { return a - b; });
     var due = 1000 / tempo.fps;
     var summary = {
       look: current, quality: sharp ? 'sharp' : 'tv', app: tvApp, ultra: Boolean(scene && scene.ultra),
@@ -1677,8 +1716,9 @@ function flowView(canvas) {
       gap50: percentile(gaps, 0.5), gap95: percentile(gaps, 0.95), gapMax: percentile(gaps, 1),
       cost50: percentile(costs, 0.5), cost95: percentile(costs, 0.95), costMax: percentile(costs, 1),
       where: scene && scene.where ? scene.where() : '', width: width, height: height,
+      tick: percentile(ticks, 0.5), keys: window.flowKeys ? window.flowKeys.join(' ') : '', sound: Boolean(sound && sound.on),
     };
-    fetch(REPORT_PATH, {method: 'POST', credentials: 'same-origin',
+    fetch(REPORT_PATH, {method: 'POST', credentials: 'same-origin', keepalive: true,
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'report=' + encodeURIComponent(JSON.stringify(summary))}).catch(function () {});
   }
@@ -1708,6 +1748,7 @@ function flowView(canvas) {
   var frameFailed = false;
   function frame(time) {
     requestAnimationFrame(frame);
+    noteTick(time);
     try {
       var start = performance.now();
       if (drawFrame(time)) {
@@ -2223,7 +2264,9 @@ function flowView(canvas) {
   // ------------------------------------------------------------- the sound --
   // Highway's sound (flow-sound.js), if chosen (the curfew_sound cookie, as the page says:
   // data-sound): started by the first click or key where a browser holds it back.
-  var sound = window.flowSound ? window.flowSound(canvas.dataset.sound === 'on') : null;
+  var SOUND_LEVELS = ['off', 'background', 'full'];
+  var SOUND_NAMES = {off: 'No sound', background: 'Background sound', full: 'Full sound'};
+  var sound = window.flowSound ? window.flowSound(canvas.dataset.sound) : null;
   if (sound) {
     ['pointerdown', 'keydown'].forEach(function (kind) {
       document.addEventListener(kind, function () { sound.wake(); });
@@ -2231,14 +2274,14 @@ function flowView(canvas) {
     window.addEventListener('pagehide', function () { sound.hush(); });
     // The TV's app, as it goes to the background.
     window.flowHush = function () { sound.hush(); };
-    // On or off (up and down on the remote, Controls' Sound at a computer): kept as
-    // Settings keeps it, in a cookie /tv sees; said where the theme's name shows.
-    window.flowSoundSet = function (on) {
-      sound.set(on);
-      document.cookie = 'curfew_sound=' + (sound.on ? 'on' : 'off') + '; Path=/tv; Max-Age=31536000; SameSite=Lax; Secure';
+    // A stage louder or quieter (up and down on the remote; Controls' Sound goes round them):
+    // kept as Settings keeps it; said where the theme's name shows.
+    window.flowSoundStep = function (way) {
+      sound.set(SOUND_LEVELS[Math.max(0, Math.min(SOUND_LEVELS.length - 1, SOUND_LEVELS.indexOf(sound.level) + way))]);
+      flowKeep('curfew_sound', sound.level);
       var name = canvas.closest('main').querySelector('.flow-look');
       if (name) {
-        name.textContent = sound.on ? 'Sound on' : 'Sound off';
+        name.textContent = SOUND_NAMES[sound.level];
         replay(name);
       }
     };
@@ -2352,9 +2395,10 @@ function flowView(canvas) {
 
   // ---------------------------------------------------------- the controls --
   // At a computer or a tablet (not the TV's app): the desk's sizes (flow-desk), and the
-  // remote's buttons on the screen. A Controls button at the top bar's right slides Theme,
-  // Zen, Detail (sharp's), Sound, Highway's minimum speed and Back out along the bar, and in again after CONTROLS
-  // seconds untouched (not while the pointer's on them), a second press, or a click or tap
+  // remote's buttons on the screen. A small button at the top bar's right (⋯, Controls) slides
+  // Theme, Zen, Detail (sharp's), Sound, Highway's minimum speed and biome, and Back out
+  // along the bar, or under it where it's narrow, and in again after CONTROLS
+  // seconds untouched (not while the pointer's on them), a second press, or a press
   // elsewhere. No keys (app.js), no hint, and a click or tap on the scene does nothing. In
   // zen the button fades out while nothing moves.
   function deskControls(hint) {
@@ -2379,7 +2423,7 @@ function flowView(canvas) {
     };
     var detailButton = null, soundButton = null;
     var showDetail = function () {
-      detailButton.textContent = 'Detail: ' + detail.charAt(0).toUpperCase() + detail.slice(1);
+      detailButton.textContent = 'Detail ' + detail.charAt(0).toUpperCase() + detail.slice(1);
     };
     // Auto, High, Ultra, and round again: a fresh Auto is tried again.
     var nextDetail = function () {
@@ -2395,45 +2439,50 @@ function flowView(canvas) {
       showDetail();
     };
     var heard = function () {
-      soundButton.textContent = 'Sound: ' + (sound.on ? 'On' : 'Off');
+      soundButton.textContent = SOUND_NAMES[sound.level];
     };
     var nextSound = function () {
-      window.flowSoundSet(!sound.on);
+      window.flowSoundStep(sound.level === 'full' ? -SOUND_LEVELS.length : 1);
       heard();
     };
     var minText = null;
     var showMin = function () {
-      minText.textContent = minSpeed ? 'Min ' + minSpeed + ' km/h' : 'Min: none';
+      minText.textContent = 'Min ' + (minSpeed || 'none');
     };
-    // Slower, how it's set, faster: only while Highway's on (app.css).
-    var minSteps = function () {
+    // Down, what it's of, up: only while Highway's on (app.css).
+    var stepper = function (label, names, act) {
       var box = document.createElement('div');
-      minText = document.createElement('span');
-      box.className = 'flow-menu-min';
-      [['−', -1, 'Lower the minimum speed'], null, ['+', 1, 'Raise the minimum speed']].forEach(function (step) {
-        if (!step) {
-          box.appendChild(minText);
-          return;
-        }
+      box.className = 'flow-menu-steps';
+      box.appendChild(label);
+      [-1, 1].forEach(function (way, n) {
         var button = document.createElement('button');
-        button.textContent = step[0];
-        button.setAttribute('aria-label', step[2]);
+        button.textContent = names[n][0];
+        button.setAttribute('aria-label', names[n][1]);
         button.tabIndex = -1;
-        press(button, function () {
-          window.flowMinSpeed(step[1]);
-          showMin();
-        });
-        box.appendChild(button);
+        press(button, function () { act(way); });
+        box.insertBefore(button, n ? null : label);
       });
-      showMin();
       return box;
     };
-    [['Theme', tvNextLook], ['Zen', tvZen], sharp ? ['Detail', nextDetail] : null, sound ? ['Sound', nextSound] : null, ['Min', null], ['Back', tvBack]].forEach(function (one) {
+    var minSteps = function () {
+      minText = document.createElement('span');
+      showMin();
+      return stepper(minText, [['−', 'Lower the minimum speed'], ['+', 'Raise the minimum speed']], function (way) {
+        window.flowMinSpeed(way);
+        showMin();
+      });
+    };
+    var biomeSteps = function () {
+      var label = document.createElement('span');
+      label.textContent = 'Biome';
+      return stepper(label, [['‹', 'Previous biome'], ['›', 'Next biome']], window.flowBiome);
+    };
+    [['Theme', tvNextLook], ['Zen', tvZen], sharp ? ['Detail', nextDetail] : null, sound ? ['Sound', nextSound] : null, ['Min', null], ['Biome', null], ['Back', tvBack]].forEach(function (one) {
       if (!one) {
         return;
       }
-      if (one[0] === 'Min') {
-        items.appendChild(minSteps());
+      if (!one[1]) {
+        items.appendChild(one[0] === 'Min' ? minSteps() : biomeSteps());
         return;
       }
       var button = document.createElement('button');
@@ -2456,7 +2505,9 @@ function flowView(canvas) {
       items.querySelectorAll('button').forEach(function (button) { button.tabIndex = on ? 0 : -1; });
     };
     toggle.className = 'flow-menu-toggle';
-    toggle.textContent = 'Controls';
+    toggle.textContent = '⋯';
+    toggle.title = 'Controls';
+    toggle.setAttribute('aria-label', 'Controls');
     press(toggle, function () { open(!root.classList.contains('flow-menu-open')); });
     open(false);
     menu.appendChild(items);
@@ -2481,22 +2532,29 @@ function flowView(canvas) {
         root.classList.add('flow-still');
       }
     }, 500);
-    document.addEventListener('pointerdown', stir);
+    // A press, not a click: an iPhone gives the page no click for a tap on the scene.
+    document.addEventListener('pointerdown', function (event) {
+      stir();
+      if (!menu.contains(event.target)) {
+        open(false);
+      }
+    });
     document.addEventListener('pointermove', function (event) {
       if (event.pointerType === 'mouse') {
         stir();
       }
     });
-    document.addEventListener('click', function () { open(false); });
   }
-  // As tall as the top bar, whatever it holds, so the buttons sit in its middle: both are
-  // zoomed alike, so the bar's height on the screen, in the menu's own pixels.
+  // As tall as the top bar, whatever it holds, so the buttons sit in its middle, and as far in
+  // from its right end as they are from its top and foot (--flow-edge).
   function levelWithBar(menu) {
     var bar = document.querySelector('.flow-top');
     var level = function () {
       var mine = menu.getBoundingClientRect().height, local = parseFloat(getComputedStyle(menu).height);
       if (bar && mine) {
         menu.style.height = (local * bar.getBoundingClientRect().height / mine).toFixed(2) + 'px';
+        var inner = bar.getBoundingClientRect().height - parseFloat(getComputedStyle(menu).paddingTop);
+        menu.style.setProperty('--flow-edge', ((inner - menu.querySelector('.flow-menu-toggle').offsetHeight) / 2).toFixed(2) + 'px');
       }
     };
     level();
@@ -2551,13 +2609,17 @@ function flowView(canvas) {
       return tag.getAttribute('src') || tag.getAttribute('href');
     }).join(' ');
   }
+  var staleDevices = false;
   function takePage(page) {
     var fresh = page && new DOMParser().parseFromString(page, 'text/html'), next = fresh && fresh.getElementById('flow');
     if (!next) {
       return;
     }
-    if (roster(next.dataset.devices) !== roster(canvas.dataset.devices) || next.dataset.profiles !== canvas.dataset.profiles ||
-        build(fresh) !== build(document)) {
+    if (roster(next.dataset.devices) !== roster(canvas.dataset.devices) || next.dataset.profiles !== canvas.dataset.profiles) {
+      staleDevices = true;
+    }
+    // Highway shows no device: those wait till another theme's on.
+    if (build(fresh) !== build(document) || (staleDevices && !highway)) {
       location.reload();
       return;
     }

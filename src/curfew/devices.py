@@ -14,7 +14,17 @@ IEEE_FILES = ("oui.csv", "mam.csv", "oui36.csv", "iab.csv")
 MAX_NAME = 60
 
 
-DEVICE_ACTIONS = {"block", "unblock", "rename", "allow", "disallow", "approve", "guest", "forget"}
+DEVICE_ACTIONS = {
+    "block",
+    "unblock",
+    "rename",
+    "type",
+    "allow",
+    "disallow",
+    "approve",
+    "guest",
+    "forget",
+}
 
 
 GUEST_HOURS = 24  # a guest device is let on this long, then forgotten
@@ -105,8 +115,19 @@ MAKER_KINDS = (
 )
 
 
-def device_kind(name: str, mac: str) -> str:
-    """Return a device type (a key of KIND_LABELS) guessed from its name or maker."""
+def device_kind(name: str, mac: str, record: dict | None = None) -> str:
+    """Return a device's type (a key of KIND_LABELS): the one set on its record, else a guess."""
+    return chosen_kind(record) or guess_kind(name, mac)
+
+
+def chosen_kind(record: dict | None) -> str:
+    """Return the type set by hand on a device's record, or ''."""
+    kind = (record or {}).get("kind", "")
+    return kind if kind in KIND_LABELS else ""
+
+
+def guess_kind(name: str, mac: str) -> str:
+    """Return the device type its name or maker suggests."""
     words = name.lower().replace(" ", "-").replace("_", "-")
     for kind, needles in NAME_KINDS:
         if any(needle in words for needle in needles):
@@ -209,10 +230,17 @@ def forget_expired_guests(state: dict, now: dt.datetime) -> list[str]:
     return macs
 
 
-def apply_device_action(state: dict, mac: str, action: str, name: str = "") -> None:
-    """Change one device record in place (homehub itself can only be renamed)."""
+def apply_device_action(
+    state: dict, mac: str, action: str, name: str = "", kind: str = ""
+) -> None:
+    """Change one device record in place (homehub itself can only be renamed).
+
+    ``kind`` is what "type" sets: a key of KIND_LABELS, or '' to go back to the guess.
+    """
     if is_router(mac) and action != "rename":
         raise ValueError("homehub is the router: blocks and approvals are for other devices.")
+    if action == "type" and kind and kind not in KIND_LABELS:
+        raise ValueError("Unknown type of device.")
     if action == "forget":
         forget_device(state, mac)
         return
@@ -236,3 +264,7 @@ def apply_device_action(state: dict, mac: str, action: str, name: str = "") -> N
         record["allowed"] = False
     elif action == "rename":
         record["name"] = name.strip()[:MAX_NAME]
+    elif action == "type" and kind:
+        record["kind"] = kind
+    elif action == "type":
+        record.pop("kind", None)

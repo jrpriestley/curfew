@@ -29,6 +29,8 @@ from curfew.web.components import (
     fold,
     format_seen,
     panel,
+    pick,
+    pick_form,
     pill,
     post_form,
     submit,
@@ -473,30 +475,15 @@ def device_select(choices: list[tuple[str, str]]) -> str:
     )
 
 
-def place_select(dhcp: dict, current: str | None = None) -> str:
-    """Return the Pool drop-down (values are device groups; see dhcp.pool_choices)."""
-    options = "".join(
-        f'<option value="{html.escape(group)}"{" selected" if group == current else ""}>'
-        f"{html.escape(text)}</option>"
-        for group, text in pool_choices(dhcp)
-    )
-    return f'<label>Pool <select name="group">{options}</select></label>'
-
-
-def pool_control(state: dict, mac: str, name: str) -> str:
-    """Return a device's Pool drop-down, or '' (no DHCP settings, one place, homehub)."""
+def pool_pick(state: dict, mac: str, name: str) -> str:
+    """Return the form that sets a device's pool, or '' (no DHCP settings, one place, homehub)."""
     dhcp = state.get("dhcp")
     if not dhcp or is_router(mac) or len(pool_choices(dhcp)) < 2:
         return ""
-    return (
-        '<div class="controls">'
-        + post_form(
-            "/dhcp",
-            {"action": "group", "mac": mac, "name": name},
-            place_select(dhcp, device_group(state, mac)) + submit("Move"),
-            "inline-form",
-        )
-        + "</div>"
+    return pick_form(
+        "/dhcp",
+        {"action": "group", "mac": mac, "name": name},
+        pick("Pool", "group", pool_choices(dhcp), device_group(state, mac)),
     )
 
 
@@ -577,23 +564,25 @@ def dhcp_summary(
 
 
 def device_dhcp(state: dict, mac: str, name: str) -> str:
-    """Return a device's DHCP controls: its pool and its fixed address."""
+    """Return a device's fixed address, to set or take away (its pool is in manage)."""
     dhcp = state.get("dhcp")
     if not dhcp or is_router(mac):
         return ""
     current = fixed_ip(state, mac)
-    fix = post_form(
+    # Remove is a form of its own, its button in the other's place for Save till there's a change.
+    remove = submit("Remove", "clear", ' form="unfix"') if current else ""
+    fix = pick_form(
         "/dhcp",
         {"action": "fix", "mac": mac, "name": name},
-        address_input("ip", "Fixed address", current) + submit("Save"),
-        "inline-form",
+        '<label><span>Fixed address</span> <input type="text" name="ip" required '
+        f'inputmode="decimal" spellcheck="false" placeholder="none" value="{current}"></label>',
+        remove,
     )
-    if current:
-        fix += post_form("/dhcp", {"action": "unfix", "mac": mac}, submit("Remove"))
-    controls = pool_control(state, mac, name) + f'<div class="controls">{fix}</div>'
+    removal = post_form("/dhcp", {"action": "unfix", "mac": mac}, "", "", "unfix")
     return panel(
         "dhcp",
         "Address",
-        controls + '<p class="muted">It takes effect at the device\'s next renewal. '
+        f'<div class="picks wide">{fix}</div>{removal if current else ""}'
+        '<p class="muted">It takes effect at the device\'s next renewal. '
         '<a href="/dhcp">DHCP ›</a></p>',
     )

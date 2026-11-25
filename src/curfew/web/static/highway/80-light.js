@@ -64,6 +64,8 @@
     p.drawImage(beamCone(), hx - 2, hy - 9, 124, 22);
     p.globalAlpha = 1;
   }
+  // How dark a tunnel is that doesn't say.
+  var TUNNEL_GLOOM = 0.74;
   // This frame's vehicles.
   var lit = [];
   function inTunnel(x0, x1) {
@@ -95,7 +97,7 @@
     p.setTransform(scene.a * q, 0, 0, scene.a * q, scene.e * q, scene.f * q);
     // In a tunnel it's dark by day as by night; each tunnel may say how dark.
     tunnels.forEach(function (t) {
-      var gloom = t[2] === undefined ? 0.74 : t[2];
+      var gloom = t[2] === undefined ? TUNNEL_GLOOM : t[2];
       if (gloom <= night.dark) {
         return;
       }
@@ -176,7 +178,7 @@
     var line = topLine(v);
     // Across the vehicle, each step the sum of its lamps.
     var bright = ctx.createLinearGradient(v.x, 0, v.x + v.length, 0), soft = ctx.createLinearGradient(v.x, 0, v.x + v.length, 0);
-    for (var x = 0; x <= v.length; x += 2) {
+    for (var x = 0, step = sharp ? 2 : 5; x <= v.length; x += step) {
       var r = 0, g = 0, b = 0, ax = v.x + x;
       above.forEach(function (l) {
         var d = (ax - l.x) / l.wide, strength = l.k * Math.exp(-d * d);
@@ -213,11 +215,11 @@
         above.push({x: x + 9, k: 0.8 * night.dark, wide: 26, tint: [255, 218, 160]});
       });
     }
-    // The adverts light the cars only where they're seen on the road: their reflections,
-    // which only a wet road shows, narrow under each advert.
-    if (roadWet > 0.01 && night.dark > 0.05) {
-      adLights.forEach(function (ad) {
-        above.push({x: ad.x + 1.5, k: 0.8 * ad.s * roadWet * Math.min(1, night.dark * 1.5), wide: 5, tint: ad.c});
+    // The adverts light a car as it passes through what they throw on the road.
+    if (night.dark > 0.05) {
+      adCasts.forEach(function (cast) {
+        var here = castAt(cast, castAcross(v.ground));
+        above.push({x: here.x, k: 0.8 * castStrength(cast), wide: 0.8 * here.half, tint: cast.c});
       });
     }
     return above.filter(function (l) { return l.x > v.x - 3 * l.wide && l.x < v.x + v.length + 3 * l.wide; });
@@ -358,12 +360,14 @@
       return;
     }
     var dark = night.dark, s = v.shape;
-    shadeBoardWith(function (p) {
-      if (v.on) {
-        pool(p, v.x + v.length - 2, v.ground - 8, 12, 9, 0.8);
-        pool(p, v.x, v.ground - 6, 10, 5, 0.45);
-      }
-    });
+    if (sharp) {
+      shadeBoardWith(function (p) {
+        if (v.on) {
+          pool(p, v.x + v.length - 2, v.ground - 8, 12, 9, 0.8);
+          pool(p, v.x, v.ground - 6, 10, 5, 0.45);
+        }
+      });
+    }
     var outline = new Path2D();
     if (outline.addPath) {
       outline.addPath(s.path, {a: 1, b: v.slope || 0, c: 0, d: 1, e: s.x, f: s.y + bodyDown(v, s.x - v.x)});
@@ -374,7 +378,11 @@
       outline.moveTo(s.x + w[0] + w[2] + 1, s.y + w[1]);
       outline.arc(s.x + w[0], s.y + w[1], w[2] + 1, 0, 6.2832);
     });
-    layShade(outline, [v.x - 2, v.top - 8, v.x + v.length + 2, v.ground + 2]);
+    if (sharp) {
+      layShade(outline, [v.x - 2, v.top - 8, v.x + v.length + 2, v.ground + 2]);
+    } else {
+      plainShade(v, outline);
+    }
     topLight(v, outline);
     if (!v.on) {
       return;
@@ -389,7 +397,30 @@
     if (air) {
       beam(ctx, hx, hy, 0.3 * strength);
     }
+    var sign = VEHICLES[v.kind].sign;
+    if (sign) {
+      glow(v.x + sign[0], v.ground - sign[1] + bodyDown(v, sign[0]), 7, [255, 214, 120], 0.4 * strength);
+    }
     ctx.globalCompositeOperation = 'source-over';
+  }
+  // On a TV a vehicle's shade is laid straight on it, lighter toward its lights: the board
+  // filled and copied again for each vehicle was most of what night cost there.
+  function plainShade(v, outline) {
+    var x0 = v.x - 2, x1 = v.x + v.length + 2, nose = v.x + v.length - 2, across = [x0, v.x + 10, nose - 12, nose - 5, nose, x1];
+    tunnels.forEach(function (t) { across.push(t[0] - 0.1, t[0] + 0.1, t[1] - 0.1, t[1] + 0.1); });
+    var shade = ctx.createLinearGradient(x0, 0, x1, 0);
+    across.filter(function (x) { return x >= x0 && x <= x1; }).sort(function (a, b) { return a - b; }).forEach(function (x) {
+      var dark = night.dark;
+      tunnels.forEach(function (t) {
+        if (x >= t[0] && x <= t[1]) {
+          dark = Math.max(dark, t[2] === undefined ? TUNNEL_GLOOM : t[2]);
+        }
+      });
+      var lit = v.on ? Math.max(0.6 * Math.max(0, 1 - Math.abs(x - nose) / 12), 0.35 * Math.max(0, 1 - Math.abs(x - v.x) / 10)) : 0;
+      shade.addColorStop((x - x0) / (x1 - x0), 'rgba(4, 6, 18, ' + (dark * (1 - lit)).toFixed(3) + ')');
+    });
+    ctx.fillStyle = shade;
+    ctx.fill(outline);
   }
   // What's in front of the traffic: darkened only.
   function nightFront() {

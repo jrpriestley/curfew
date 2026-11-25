@@ -2,6 +2,7 @@
 
 import datetime as dt
 import html
+from collections.abc import Iterable
 
 from curfew.config import MORNING
 from curfew.devices import KIND_LABELS, device_kind, maker_text
@@ -49,6 +50,24 @@ def post_form(
     """Return a POST form: hidden ``fields`` followed by ``inner`` (inputs, buttons)."""
     attrs = (f' class="{css}"' if css else "") + (f' id="{form_id}"' if form_id else "")
     return f'<form method="post" action="{url}"{attrs}>{hidden_inputs(fields)}{inner}</form>'
+
+
+def pick(label: str, name: str, choices: Iterable[tuple[str, str]], current: str | None) -> str:
+    """Return a labelled drop-down of (value, text) choices."""
+    options = "".join(
+        f'<option value="{html.escape(value)}"{" selected" if value == current else ""}>'
+        f"{html.escape(text)}</option>"
+        for value, text in choices
+    )
+    return f'<label><span>{label}</span> <select name="{name}">{options}</select></label>'
+
+
+def pick_form(url: str, fields: dict[str, str], box: str, other: str = "") -> str:
+    """Return a drop-down (or a box) with its Save button, which app.js shows once it's changed.
+
+    ``other`` is a button to show till then.
+    """
+    return post_form(url, fields, box + other + submit("Save"), "pick")
 
 
 def submit(label: str, css: str = "", attrs: str = "") -> str:
@@ -230,9 +249,9 @@ def pause_all_controls(state: dict, now: dt.datetime) -> str:
     return f'<div class="all-controls">{"".join(controls)}</div>'
 
 
-def device_badge(name: str, mac: str, lease: Lease | None) -> str:
+def device_badge(name: str, mac: str, lease: Lease | None, record: dict) -> str:
     """Return the device-type icon tile, with a green badge while it's online."""
-    kind = device_kind(name, mac)
+    kind = device_kind(name, mac, record)
     online = (
         '<span class="online" title="Online now"><span class="sr-only">online</span></span>'
         if lease and lease.online
@@ -257,7 +276,7 @@ def action_button(mac: str, action: str, label: str, form_id: str = "") -> str:
 
 
 def device_cell(
-    name: str, mac: str, lease: Lease | None, extra: str = "", info: bool = True
+    name: str, mac: str, lease: Lease | None, record: dict, extra: str = "", info: bool = True
 ) -> str:
     """Return a device's name cell: type icon, name (or ``extra``), ⓘ and private tag.
 
@@ -268,7 +287,7 @@ def device_cell(
     label = f'<a class="dev-link" href="/device?mac={mac}" title="{html.escape(name)}">{label}</a>'
     private_tag = "<span class=tag>private</span>" if is_private(mac) else ""
     return (
-        f'<td class="name"><span class="dev">{device_badge(name, mac, lease)}<span>'
+        f'<td class="name"><span class="dev">{device_badge(name, mac, lease, record)}<span>'
         f"{extra or label}{info_popup(name, mac, lease) if info else ''}{private_tag}"
         "</span></span></td>"
     )

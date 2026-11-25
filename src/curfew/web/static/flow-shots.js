@@ -227,6 +227,19 @@ window.flowShots = function (ready) {
     roar(ac, out, {noise: 'white', at: 0.004, from: 5000, to: 900, peak: 0.4, decay: 0.08});
   }
 
+  // The guns' pressure let go: a bang of air, then steam rushing out, its hiss falling as it
+  // runs down, sputtering at the end.
+  function vent(ac) {
+    var out = stage(ac, {drive: 1.6, tail: 1.2, dark: 4, wet: 0.25});
+    roar(ac, out, {at: 0.005, from: 900, to: 120, peak: 1, attack: 0.02, decay: 1.2});
+    roar(ac, out, {noise: 'white', type: 'bandpass', q: 0.6, at: 0.01, from: 3000, to: 800, peak: 0.42, attack: 0.06, decay: 7});
+    roar(ac, out, {noise: 'white', type: 'highpass', at: 0.02, from: 4200, to: 2400, peak: 0.1, attack: 0.08, decay: 5});
+    roar(ac, out, {at: 0.02, from: 1200, to: 240, peak: 1.2, attack: 0.06, decay: 5});
+    for (var puff = 0; puff < 6; puff += 1) {
+      roar(ac, out, {noise: 'white', type: 'bandpass', q: 1, at: 1.7 + puff * 0.22 + Math.random() * 0.1, from: 2600, to: 1200, peak: 0.22 - puff * 0.03, attack: 0.02, decay: 0.16});
+    }
+  }
+
   // ----------------------------------------------------------------- the loops --
   // A big lazy V8 of the sixties at LOOP_RPM: eight firings every two turns, one bank's heard
   // well over the other's and theirs unevenly spaced (a cross-plane crank's burble), no two
@@ -302,7 +315,7 @@ window.flowShots = function (ready) {
   // [seconds, recipe, how many, each a little different]. The loops come first: they're
   // always heard. `ready` is called with each's name and buffer.
   var RECIPES = {
-    thump: [3.2, thump, 1], hum: [4.2, hum, 1], charge: [2, charge, 1], bolt: [1.1, bolt, 2], cannon: [4, cannon, 1], blast: [9.5, blast, 2],
+    thump: [3.2, thump, 1], hum: [4.2, hum, 1], charge: [2, charge, 1], bolt: [1.1, bolt, 2], vent: [4.5, vent, 1], cannon: [4, cannon, 1], blast: [9.5, blast, 2],
     impact: [4, impact, 3], artillery: [3.4, artillery, 2],
   };
   // The recorded, and what stands in for one that won't load: a recipe, a loop, or nothing.
@@ -381,7 +394,7 @@ window.flowShots = function (ready) {
   addLoop('engine', function () { return engineLoop(false); });
   addLoop('engineLoad', function () { return engineLoop(true); });
   RECORDED.forEach(addRecording);
-  ['thump', 'hum', 'charge', 'bolt'].forEach(addRecipe);
+  ['thump', 'hum', 'charge', 'bolt', 'vent'].forEach(addRecipe);
   function nextJob() {
     var job = jobs.shift();
     if (job) {

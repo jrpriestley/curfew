@@ -8,7 +8,7 @@ from curfew.web.layout import FLOW_SOUNDS, PAGE_STYLE, STATIC
 def test_dark_palette_is_defined_once_in_two_places() -> None:
     """The system-dark block and the chosen-dark block must not drift apart."""
     blocks = re.findall(
-        r'(?::root:not\(\[data-theme="light"\]\)|:root\[data-theme="dark"\]) \{([^}]*)\}',
+        r'(?::root:not\(\[data-theme\]\)|:root:is\(\[data-theme="dark"\][^)]*\)) \{([^}]*)\}',
         PAGE_STYLE,
     )
     assert len(blocks) == 2 and blocks[0].split() == blocks[1].split()

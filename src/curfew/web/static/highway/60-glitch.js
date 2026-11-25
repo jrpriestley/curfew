@@ -129,7 +129,7 @@
     if (alpha < 0.02) {
       return;
     }
-    var horizon = RT - 66, layer = odometer * 0.07, hills = odometer * 0.16;
+    var horizon = RT - 66, layer = odometer * RISE_RATE, hills = odometer * 0.16;
     ctx.strokeStyle = css(blend([40, 50, 70], [190, 225, 255], light.night), alpha);
     ctx.lineWidth = 0.4;
     ctx.beginPath();
@@ -152,7 +152,7 @@
       ctx[x ? 'lineTo' : 'moveTo'](x, RT - 34 - 10 * Math.sin(u / 70) - 6 * Math.sin(u / 23 + 1));
     }
     [4, 9, 16, 26, 40, 58].forEach(function (d, i, all) {
-      var y = horizon + d, next = horizon + (all[i + 1] || 66), rate = 0.06 + 0.5 * d / 66;
+      var y = horizon + d, next = horizon + (all[i + 1] || 66), rate = bandRate(y);
       ctx.moveTo(0, y);
       ctx.lineTo(cols, y);
       for (var gx = -((odometer * rate) % 30); gx < cols; gx += 30) {

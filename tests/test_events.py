@@ -4,7 +4,7 @@ import datetime as dt
 from zoneinfo import ZoneInfo
 
 from curfew.events import Event, days_ahead, duration, events_between, unfold
-from curfew.web.pages.tv import render_calendar
+from curfew.web.pages.flow import render_calendar
 
 TORONTO = ZoneInfo("America/Toronto")
 MONDAY = dt.datetime(2026, 11, 16, 0, 0, tzinfo=TORONTO)  # a Monday

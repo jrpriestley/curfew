@@ -6,10 +6,11 @@
 // The world's sounds go through `world`, which the glitch's void takes to nothing; the
 // whiteout's hiss goes past it. Of them the steady ones (the engine, the road, the weather)
 // go through `bed`, which ducks under a shot, as an ear does: it's the louder for it.
-window.flowSound = function (on) {
+// `level`: 'off', 'background' (all but our engine) or 'full'.
+window.flowSound = function (level) {
   var VOLUME = 0.55, EVERY = 0.07;
-  var ac = null, n = {}, last = 0, told = 0, want = Boolean(on), noise = null, nextWar = 0, shifted = {at: -9, up: true};
-  var made = {}, sounding = 0, MOST_SOUNDING = 14, LOOP_RPM = 900, IDLE_RPM = 540, RED_RPM = 3100, PASS_NEAREST = 4.5, FALL_LANDS = 2.2;
+  var ac = null, n = {}, last = 0, told = 0, want = level !== 'off', noise = null, nextWar = 0, shifted = {at: -9, up: true};
+  var made = {}, sounding = 0, MOST_SOUNDING = 14, LOOP_RPM = 900, IDLE_RPM = 540, RED_RPM = 3100, PASS_NEAREST = 4.5, FALL_LANDS = 2.2, AT_EDGE = 0.45, PORTAL = 0.04;
   // The recordings have little of the bottom: a generated thump under each that should.
   var THUMPS = {blast: 0.5, impact: 0.55, cannon: 0.4};
   function filter(type, freq, q) {
@@ -70,23 +71,22 @@ window.flowSound = function (on) {
     n.shots = ac.createGain();
     n.shots.gain.value = 3.9;
     n.shots.connect(n.world);
-    buildEcho();
+    buildPlace();
     buildEngine();
     // The tyres: a hiss, and the rumble under it that the body carries.
     var road = filteredNoise('bandpass', 700, 0.6);
-    road.gain.connect(n.bed);
-    road.gain.connect(n.echoIn);
+    road.gain.connect(n.ours);
     n.road = road.gain.gain;
     var rumble = filteredNoise('lowpass', 110, 0.8);
     rumble.gain.connect(n.bed);
     n.rumble = rumble.gain.gain;
     var wind = filteredNoise('lowpass', 500, 0.9);
-    wind.gain.connect(n.bed);
+    wind.gain.connect(n.outside);
     n.wind = wind.gain.gain;
     n.windTone = wind.tone;
     n.rainGain = ac.createGain();
     n.rainGain.gain.value = 0;
-    n.rainGain.connect(n.bed);
+    n.rainGain.connect(n.outside);
     n.rain = n.rainGain.gain;
     buildPassing();
     var hiss = filteredNoise('highpass', 1200, 0.5);
@@ -144,8 +144,14 @@ window.flowSound = function (on) {
     n.passHum.connect(n.passPan);
     n.passOsc.start();
   }
-  // A tunnel's echo: what goes in comes back a little later, again, fainter.
-  function buildEcho() {
+  // Where we are: our own noise, and the weather outside, each through a gain of its own, so
+  // a tunnel's mouth changes them in a moment whatever they're easing to. A tunnel's echo of
+  // ours comes back a little later, again, fainter.
+  function buildPlace() {
+    n.outside = ac.createGain();
+    n.outside.connect(n.bed);
+    n.ours = ac.createGain();
+    n.ours.connect(n.bed);
     n.echoIn = ac.createDelay(1);
     n.echoIn.delayTime.value = 0.09;
     var back = ac.createGain();
@@ -156,6 +162,7 @@ window.flowSound = function (on) {
     back.connect(n.echoIn);
     n.echoIn.connect(n.echo);
     n.echo.connect(n.bed);
+    n.ours.connect(n.echoIn);
   }
   // The V8's two loops (flow-shots.js), easy and pulling hard, mixed by the throttle and
   // opened with the revs, over a swell at the exhaust's own note.
@@ -172,8 +179,7 @@ window.flowSound = function (on) {
     n.hardGain.connect(n.low);
     n.low.connect(n.boom);
     n.boom.connect(n.engine);
-    n.engine.connect(n.bed);
-    n.engine.connect(n.echoIn);
+    n.engine.connect(n.ours);
   }
   function ease(param, value, time) {
     param.setTargetAtTime(value, ac.currentTime, time || 0.15);
@@ -242,17 +248,22 @@ window.flowSound = function (on) {
     ease(n.softGain.gain, 1 - 0.75 * push, 0.1);
     ease(n.hardGain.gain, 0.25 * rpm + 0.75 * push, 0.1);
     ease(n.low.frequency, 620 + 1500 * rpm * (0.5 + 0.5 * push), 0.08);
-    ease(n.engine.gain, (0.055 + 0.05 * rpm + 0.06 * push) * dip * (s.tunnel ? 1.3 : 1), quick ? 0.03 : 0.15);
+    var heard = level === 'full' ? (0.055 + 0.05 * rpm + 0.06 * push) * dip : 0;
+    ease(n.engine.gain, heard, quick ? 0.03 : 0.15);
   }
   function surroundings(s, t, v) {
-    ease(n.road, (0.015 + 0.11 * Math.pow(v, 1.5)) * (s.tunnel ? 1.5 : 1));
-    ease(n.rumble, 0.05 + 0.5 * Math.pow(v, 1.3));
+    // With no engine over them, the road and the wind are brought up, or they'd hardly be heard.
+    var up = level === 'background' ? 2 : 1;
+    ease(n.road, up * (0.015 + 0.11 * Math.pow(v, 1.5)));
+    ease(n.rumble, up * (0.05 + 0.5 * Math.pow(v, 1.3)));
     var gust = 0.75 + 0.25 * Math.sin(t * 0.7) * Math.sin(t * 0.23 + 1);
-    ease(n.wind, (0.06 * v * v + 0.05 * s.wind) * gust * (s.tunnel ? 0.2 : 1), 0.5);
+    ease(n.wind, up * (0.06 * v * v + 0.05 * s.wind) * gust, 0.5);
     ease(n.windTone.frequency, 300 + 500 * v * gust, 0.5);
-    ease(n.rain, 0.6 * s.rain * (s.tunnel ? 0.1 : 1), 0.6);
+    ease(n.rain, 0.6 * s.rain, 0.6);
+    ease(n.ours.gain, 1 + 0.4 * s.tunnel, PORTAL);
+    ease(n.outside.gain, 1 - 0.85 * s.tunnel, PORTAL);
+    ease(n.echo.gain, 0.55 * s.tunnel, PORTAL);
     passing(s);
-    ease(n.echo.gain, s.tunnel ? 0.55 : 0, 0.3);
     ease(n.hiss, 0.22 * s.flash, 0.05);
     // The underworld's lava: a low roar, bubbling.
     ease(n.lava, 0.75 * (s.lava || 0), 0.8);
@@ -296,16 +307,21 @@ window.flowSound = function (on) {
     get on() {
       return want;
     },
+    get level() {
+      return level;
+    },
     // Made, started and faded up. Called from a click or a key, so a browser allows it.
     set: function (value) {
-      want = Boolean(value);
+      var was = want;
+      level = value;
+      want = level !== 'off';
       if (want) {
         build();
         if (ac && ac.state === 'suspended') {
           ac.resume();
         }
       }
-      if (ac) {
+      if (ac && want !== was) {
         ease(n.master.gain, 0, 0.2);
       }
     },
@@ -318,7 +334,12 @@ window.flowSound = function (on) {
         ac.resume();
       }
     },
-    // How things are now: speed, rain and wind (0 to 1), in a tunnel, a car passing (0 to
+    // How far ahead of time to say what must be heard on time.
+    get lead() {
+      return ac ? lag() + PORTAL + EVERY / 2 : 0;
+    },
+    // How things are now: speed, rain and wind (0 to 1), how far into a tunnel (0 to 1, as it
+    // will be in `lead` seconds), a car passing (0 to
     // 1, nearest; where it is and how fast), the warzone's nearness, the glitch (g, and world: 1, or less in its
     // void), the whiteout (flash). Told each frame, it changes things only every EVERY
     // seconds: each change is a dozen automation events, and at every frame they cost a
@@ -344,15 +365,22 @@ window.flowSound = function (on) {
       events(s, t, dt);
     },
     // A car that will be beside us in `soon` seconds, from the side `from` (-1 behind, 1
-    // ahead), going by.
-    pass: function (soon, from) {
+    // ahead), going by; `enters` and `leaves`: when it comes on the screen and goes off it.
+    // Off the screen it's heard, but fainter.
+    pass: function (soon, from, enters, leaves) {
       if (!playing() || !made.pass) {
         return;
       }
-      var t = ac.currentTime, s = ac.createBufferSource(), g = ac.createGain(), side = panner(), into = Math.max(0, PASS_NEAREST - soon);
+      var t = ac.currentTime, s = ac.createBufferSource(), g = ac.createGain(), side = panner(), into = Math.max(0, PASS_NEAREST - soon + lag());
+      var early = lag(), nearest = t + Math.max(0.1, soon - early), off = t + Math.max(soon, leaves) - early;
       s.buffer = made.pass[0];
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.55, t + 0.4);
+      if (enters - early > 0.1) {
+        g.gain.linearRampToValueAtTime(0.55 * AT_EDGE, t + enters - early);
+      }
+      g.gain.linearRampToValueAtTime(0.55, nearest);
+      g.gain.linearRampToValueAtTime(0.55 * AT_EDGE, Math.max(nearest + 0.1, off));
+      g.gain.linearRampToValueAtTime(0, Math.max(nearest + 0.1, off) + 2);
       if (side.pan) {
         side.pan.setValueAtTime(0.75 * from, t);
         side.pan.linearRampToValueAtTime(-0.75 * from, t + 2 * soon);

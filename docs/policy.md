@@ -7,9 +7,11 @@
   device to block.
 - Name: the saved name, else a dhcpd.conf comment, else the DHCP hostname
   (`display_name`). Maker: the local IEEE registries, longest prefix first; nothing
-  looked up online. Kind (phone, TV, console…) is guessed from the name, then the maker.
+  looked up online. Type (phone, TV,
+  console…, `KIND_LABELS`): the one set on the device (`kind` on its record), else guessed from the name,
+  then the maker (`device_kind`, `guess_kind`).
 - Private (locally administered) MACs are tagged *private*.
-- Actions (`DEVICE_ACTIONS`): block, unblock, rename, allow, disallow (the private
+- Actions (`DEVICE_ACTIONS`): block, unblock, rename, type (set, or back to the guess), allow, disallow (the private
   rule), approve, guest (on for `GUEST_HOURS` = 24, then forgotten by the sync), forget
   (the record goes; it's new again). Also wake (wake-on-LAN), which changes nothing.
 

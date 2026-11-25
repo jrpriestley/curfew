@@ -308,7 +308,7 @@ def render_network(
         Star(
             row.mac,
             row.name,
-            device_kind(row.name, row.mac),
+            device_kind(row.name, row.mac, row.record),
             bool(row.lease and row.lease.online),
             row.status == "allowed",
             sum(today.get(row.mac, (0, 0))),

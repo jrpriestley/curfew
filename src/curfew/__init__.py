@@ -8,4 +8,4 @@ saved state; ``curfew sync`` runs every minute to keep schedules on time and
 to log usage.
 """
 
-__version__ = "1.120.0"
+__version__ = "1.137.1"

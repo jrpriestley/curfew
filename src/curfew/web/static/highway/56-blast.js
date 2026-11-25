@@ -87,7 +87,7 @@
       if (age >= 0 && !bomb.heard) {
         bomb.heard = true;
         if (flow.sound) {
-          flow.sound.shot('blast', Math.min(1, 0.85 * bomb.size), 1 + Math.random(), x / cols * 2 - 1);
+          flow.sound.shot('blast', Math.min(1, 0.85 * bomb.size) * heardAt(x), 1 + Math.random(), x / cols * 2 - 1);
         }
       }
       if (age < 0) {
