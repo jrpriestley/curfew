@@ -1,0 +1,37 @@
+[Unit]
+Description=curfew device page (https://homehub:8088)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Root is needed to read /etc/shadow, change the nftables sets, write
+# Pi-hole's gravity.db, and write curfew.conf in /etc/dhcp and restart dhcpd
+# (the copies dhcpd -t checks first must sit there too, for AppArmor).
+ExecStartPre=/etc/homehub-router/make-cert.sh
+ExecStart=/opt/curfew/bin/curfew serve
+Restart=on-failure
+RestartSec=5
+StateDirectory=homehub-router
+ProtectSystem=strict
+ReadWritePaths=/etc/homehub-router/tls /etc/pihole /etc/dhcp
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+# The page faces the LAN and runs as root, so it gets no more of the system
+# than it uses: no kernel settings, modules, clock or namespaces, and only
+# local, IP and netlink (nftables) sockets.
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

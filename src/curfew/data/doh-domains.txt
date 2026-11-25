@@ -1,0 +1,24 @@
+# DNS-over-HTTPS/TLS resolver hostnames, blocked in Pi-hole for every group
+# by `curfew doh` (each also blocks its subdomains). Their bare IPs are in
+# router.nft's doh_resolvers set. One domain per line.
+cloudflare-dns.com
+one.one.one.one
+dns.google
+dns.google.com
+dns.quad9.net
+dns9.quad9.net
+dns10.quad9.net
+dns11.quad9.net
+doh.opendns.com
+doh.familyshield.opendns.com
+dns.adguard.com
+dns.adguard-dns.com
+dns.nextdns.io
+doh.cleanbrowsing.org
+doh.mullvad.net
+dns.mullvad.net
+dns.controld.com
+freedns.controld.com
+doh.dns.sb
+dns.alidns.com
+doh.pub

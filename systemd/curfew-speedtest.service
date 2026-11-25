@@ -1,0 +1,7 @@
+[Unit]
+Description=curfew: weekly speed test of the internet line, once the house is quiet
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/curfew/bin/curfew speedtest --weekly

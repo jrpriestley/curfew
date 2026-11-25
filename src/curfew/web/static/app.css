@@ -1,0 +1,984 @@
+:root {
+  --bg: #f4f4f1; --surface: #ffffff; --surface-2: #f1f1ed; --text: #1b1b19;
+  --muted: #5f5f5a; --border: #e3e3dd; --accent: #1f5fbf; --danger: #b3261e;
+  --ok: #1e7a3c; --warn: #8a5300; --grid: #e4e4df; --track: #dcdcd6;
+  --down: #2a78d6; --up: #eb6834; --curfew: #c27a12;
+  --ok-bg: #e3f3e8; --ok-fg: #1b6b35; --warn-bg: #fbefd9; --warn-fg: #7a4a00;
+  --danger-bg: #fbe3e1; --danger-fg: #a1231b; --muted-bg: #ececea; --muted-fg: #4d4d48;
+  --shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 14px rgb(0 0 0 / 5%);
+  --h1: #cde2fb; --h2: #9ec5f4; --h3: #6da7ec; --h4: #3987e5; --h5: #256abf; --h6: #104281;
+  --logo-bg: #33332f; --moon: #f4f4f0; --moon-dark: #5a5a55;
+  --radius: 14px; --space: 1rem; color-scheme: light;
+  --icon: 2.1rem; --icon-gap: 0.65rem;  /* a device's type icon, and the gap to its name */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --bg: #121211; --surface: #1c1c1b; --surface-2: #262624; --text: #ecebe7;
+  --muted: #a9a8a0; --border: #33332f; --accent: #7aa9f0; --danger: #f28b82;
+  --ok: #4fbf74; --warn: #f0b45a; --grid: #33332f; --track: #3a3a36;
+  --down: #3987e5; --up: #d95926; --curfew: #c27a12;
+  --ok-bg: #1b3a25; --ok-fg: #8fdca6; --warn-bg: #3b2c10; --warn-fg: #f3c47a;
+  --danger-bg: #45201c; --danger-fg: #f6a49c; --muted-bg: #2d2d2a; --muted-fg: #c3c2b7;
+  --h1: #0d366b; --h2: #184f95; --h3: #256abf; --h4: #3987e5; --h5: #6da7ec; --h6: #b7d3f6;
+  --shadow: 0 1px 2px rgb(0 0 0 / 45%); color-scheme: dark;
+}
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --surface: #1c1c1b; --surface-2: #262624; --text: #ecebe7;
+  --muted: #a9a8a0; --border: #33332f; --accent: #7aa9f0; --danger: #f28b82;
+  --ok: #4fbf74; --warn: #f0b45a; --grid: #33332f; --track: #3a3a36;
+  --down: #3987e5; --up: #d95926; --curfew: #c27a12;
+  --ok-bg: #1b3a25; --ok-fg: #8fdca6; --warn-bg: #3b2c10; --warn-fg: #f3c47a;
+  --danger-bg: #45201c; --danger-fg: #f6a49c; --muted-bg: #2d2d2a; --muted-fg: #c3c2b7;
+  --h1: #0d366b; --h2: #184f95; --h3: #256abf; --h4: #3987e5; --h5: #6da7ec; --h6: #b7d3f6;
+  --shadow: 0 1px 2px rgb(0 0 0 / 45%); color-scheme: dark;
+}
+/* Amazon Ember, the house's font for every web page, from homehub's own copy (EMBER_DIR). */
+@font-face { font-family: "Amazon Ember"; src: url("/ember-400.woff2") format("woff2");
+  font-weight: 400; font-display: swap; }
+@font-face { font-family: "Amazon Ember"; src: url("/ember-600.woff2") format("woff2");
+  font-weight: 600; font-display: swap; }
+@font-face { font-family: "Amazon Ember"; src: url("/ember-700.woff2") format("woff2");
+  font-weight: 700; font-display: swap; }
+@font-face { font-family: "Amazon Ember Display"; src: url("/ember-display-400.woff2") format("woff2");
+  font-weight: 400; font-display: swap; }
+@font-face { font-family: "Amazon Ember Display"; src: url("/ember-display-700.woff2") format("woff2");
+  font-weight: 700; font-display: swap; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 "Amazon Ember", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+/* Text links underline on hover; links styled as controls (nav, tiles,
+   ranges, sort headings) sit elsewhere and never do. */
+:is(p, td, footer, h3, .panel-head, .tools, .sort-links) > a:is(:hover, :focus-visible) {
+  text-decoration: underline; }
+main, footer, .topbar-inner { max-width: 66rem; margin: 0 auto; padding: 0 1rem; }
+main { padding-top: 1.25rem; padding-bottom: 0.5rem; }
+h1 { font-size: 1.5rem; letter-spacing: -0.01em; margin: 0 0 1rem; }
+h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
+h3 { font-size: 1.1rem; margin: 0; }
+.crumbs { margin: 0 0 0.15rem; font-size: 0.85rem; color: var(--muted); }
+/* Top bar: brand, sections, theme and sign-out; sections move to a bottom
+   tab bar on phones. */
+.topbar { position: sticky; top: 0; z-index: 10; background: var(--surface);
+  border-bottom: 1px solid var(--border); }
+.topbar-inner { display: flex; align-items: center; gap: 1rem; min-height: 3.4rem;
+  position: relative; pointer-events: none; }
+.topbar-inner :is(a, button, form) { pointer-events: auto; }
+.sky-tip { position: absolute; inset: 0; }
+/* Sky: the top bar tinted by homehub's clock (sky_phase). Day to dusk mix a
+   hue into the surface, so they work in both themes; night is the same deep
+   blue in both, with light text. */
+.sky-dawn { --sky-hue: #f39a6b; background: linear-gradient(90deg,
+  color-mix(in srgb, var(--surface) 62%, #f6a77c),
+  color-mix(in srgb, var(--surface) 85%, #f9d48b)); }
+.sky-day { --sky-hue: #6fb0ee; background: linear-gradient(90deg,
+  color-mix(in srgb, var(--surface) 72%, #7db8f0), var(--surface)); }
+.sky-dusk { --sky-hue: #c98bc4; background: linear-gradient(90deg,
+  color-mix(in srgb, var(--surface) 62%, #e58c5e),
+  color-mix(in srgb, var(--surface) 70%, #9a7fd1)); }
+.sky-night { --sky-hue: #7484e0; background: linear-gradient(90deg, #141a36, #273061);
+  --text: #eef0fa; --muted: #b6bbd8; --surface: #2c3568; --surface-2: rgb(255 255 255 / 12%);
+  --accent: #9ec0ff; --border: rgb(255 255 255 / 14%); }
+/* Highlights on the sky take its hue, mixed into the theme's surface: light
+   and tinted in light mode, deep and tinted in dark mode, so they stand out
+   from the bar whatever the hour (text keeps >= 4:1 on the strong mix). */
+/* The bar's buttons are 25% see-through, so the sky shows behind them. */
+.topbar nav.primary a:hover { background: color-mix(in srgb,
+  color-mix(in srgb, var(--sky-hue) 30%, var(--surface)) 75%, transparent); }
+.topbar nav.primary a[aria-current] { color: var(--text); background: color-mix(in srgb,
+  color-mix(in srgb, var(--sky-hue) 55%, var(--surface)) 75%, transparent); }
+.topbar .theme { background: color-mix(in srgb,
+  color-mix(in srgb, var(--sky-hue) 30%, var(--surface)) 75%, transparent); }
+.topbar .theme button[aria-pressed="true"] { background: color-mix(in srgb,
+  color-mix(in srgb, var(--sky-hue) 60%, var(--surface)) 75%, transparent); }
+.topbar button.ghost:hover { color: var(--text); }
+.brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700;
+  font-size: 1.1rem; color: var(--text); text-decoration: none; }
+.logo { width: 1.8rem; height: 1.8rem; flex: none; }
+.logo-bg { fill: var(--logo-bg); }
+.logo-dark { fill: var(--moon-dark); }
+.logo-lit { fill: var(--moon); }
+nav.primary { display: flex; gap: 0.25rem; }
+nav.primary a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem;
+  border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 500; }
+nav.primary a:hover, nav.primary a[aria-current] { color: var(--text);
+  background: var(--surface-2); }
+.icon { width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.topbar-tools { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.flow-link { display: inline-flex; padding: 0.35rem; border-radius: 999px; color: var(--muted); }
+.flow-link:hover { color: var(--text); }
+.theme { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-2); }
+.theme button { border: 0; padding: 0.3rem 0.5rem; border-radius: 999px; line-height: 0; }
+.theme button[aria-pressed="true"] { background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow); }
+.theme .icon { width: 1rem; height: 1rem; }
+/* Surfaces */
+.panel, .card { background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem 1.1rem;
+  margin-bottom: var(--space); }
+.panel p { margin: 0.3rem 0; }
+.notice { border-left: 4px solid var(--accent); }
+.panel-head, .section-head { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+  align-items: center; justify-content: space-between; }
+.panel-head { margin-bottom: 0.4rem; }
+.panel-head h2 { margin: 0; }
+.section-head { margin: 1.4rem 0 0.75rem; }
+.section-head h2 { margin: 0; font-size: 1.15rem; }
+section h2 + .muted { margin-top: 0; }
+/* Summary tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space); margin-bottom: var(--space); }
+.tile { display: block; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.85rem 1rem;
+  color: var(--text); text-decoration: none; }
+.tile:hover { border-color: var(--accent); }
+.tile-label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+.tile-value { display: block; margin-top: 0.1rem; font-size: 1.75rem; font-weight: 700;
+  line-height: 1.2; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tile-sub { display: block; font-size: 0.8rem; color: var(--muted); }
+.tile-alert .tile-value { color: var(--danger); }
+/* Switch cards */
+.policies { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space); margin-bottom: var(--space); }
+.switch-card { display: flex; gap: 1rem; align-items: flex-start;
+  justify-content: space-between; margin: 0; }
+.switch-card p { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.switch-state { font-weight: 600; }
+button.switch { position: relative; flex: none; width: 2.9rem; height: 1.7rem; padding: 0;
+  margin-top: 0.1rem; border: 0; border-radius: 999px; background: var(--track); }
+button.switch:hover { background: var(--track); filter: brightness(0.95); }
+button.switch .knob { position: absolute; top: 0.2rem; left: 0.2rem; width: 1.3rem;
+  height: 1.3rem; border-radius: 50%; background: #ffffff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
+button.switch[aria-checked="true"], button.switch[aria-checked="true"]:hover {
+  background: var(--ok); }
+button.switch[aria-checked="true"] .knob { left: auto; right: 0.2rem; }
+/* Controls: one height for buttons, selects and inputs so they line up. Browsers
+   size a native select their own way, so it's drawn plainly with its arrow in CSS
+   (no image: the content policy allows none from data: URLs). */
+:root { --control: 2.1rem; }
+input[type=search], input[type=text], input[type=password], input[type=time], select {
+  font: inherit; font-size: 0.875rem; line-height: 1.4; height: var(--control);
+  padding: 0 0.6rem; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); }
+select { appearance: none; -webkit-appearance: none; padding-right: 1.7rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 0.85rem center, right 0.55rem center;
+  background-size: 0.3rem 0.3rem; background-repeat: no-repeat; }
+button { font: inherit; font-size: 0.875rem; font-weight: 500; line-height: 1.4;
+  padding: 0.3rem 0.8rem; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+/* Boxed buttons (not the low-key ghost ones, or switches) match the boxes beside them. */
+button:not(.ghost, .switch) { height: var(--control); padding: 0 0.8rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+button:hover { background: var(--surface-2); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.block { color: var(--danger); }
+button.unblock, button.allow { color: var(--ok); }
+/* Ghost buttons: icon and low-key buttons with no box of their own. */
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button.ghost:hover { color: var(--accent); background: transparent; }
+/* Tables */
+/* Positioned so it holds (and clips) the screen-reader-only text in its cells:
+   an absolute .sr-only otherwise escapes the scroll and widens the page. */
+.table-wrap { position: relative; overflow-x: auto; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.panel .table-wrap { box-shadow: none; border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border);
+  vertical-align: middle; white-space: nowrap; }
+th { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); }
+tbody tr:hover { background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.name { white-space: normal; min-width: 12rem; }
+td.status { white-space: normal; min-width: 8rem; }
+td.actions { white-space: normal; }
+td.actions form, .controls form { display: inline-flex; gap: 0.3rem; align-items: center;
+  margin: 0.1rem 0.4rem 0.1rem 0; vertical-align: middle; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; }
+td a { font-weight: 600; }
+th a { color: inherit; text-decoration: none; }
+th a:hover { color: var(--accent); }
+th[aria-sort] a { color: var(--text); }
+th[aria-sort="ascending"] a::after { content: " ↑"; }
+th[aria-sort="descending"] a::after { content: " ↓"; }
+tr.group th { background: var(--surface-2); color: var(--text); text-transform: none;
+  letter-spacing: 0; font-size: 0.85rem; }
+tr.group th .muted { font-weight: 400; }
+th.num, td.num, td.usage { font-variant-numeric: tabular-nums; }
+th.num, td.num { text-align: right; }
+td.usage a { font-weight: 400; }
+/* Device rows open to the row under them (facts, controls, the page link);
+   the ▸ at the end turns, and the pair shares a tint while open. */
+tr.dev-row { cursor: pointer; }
+td.more-cell { width: 2.5rem; text-align: right; }
+button.more { padding: 0 0.45rem; color: var(--muted); font-size: 1.1rem; line-height: 1.2;
+  transition: transform 0.15s; }
+tr.dev-row.open button.more { transform: rotate(90deg); }
+tr.dev-row.open, tr.dev-row.open + tr.dev-more {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+tr.dev-row.open > td { border-bottom: 0; }
+tr.dev-more > td { white-space: normal;
+  padding: 0 0.8rem 0.9rem calc(0.8rem + var(--icon) + var(--icon-gap)); }
+tr.dev-more .device-facts { margin: 0; padding-top: 0; border-top: 0; font-size: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.5rem 1rem; }
+tr.dev-more .device-facts dd { font-weight: 500; }
+tr.dev-more .controls { margin-top: 0.75rem; }
+tr.pool-more > td { padding-left: 0.8rem; }  /* pools have no icon to clear */
+.card-label { display: none; color: var(--muted); }  /* shown in phone cards only */
+tr.pool-more h3, .fold .panel h3 { margin: 1rem 0 0.4rem; font-size: 0.95rem;
+  overflow-wrap: anywhere; }
+.fold .panel h3:first-child { margin-top: 0; }
+.page-head { margin: 0 0 1rem; }
+.page-head h1 { margin: 0; }
+.page-head .controls { gap: 0.4rem 1rem; }
+.page-head .controls form { margin: 0; }
+.dev-page, tr.dev-more .controls p { margin: 0.75rem 0 0; }
+/* Device cell: type icon with an online badge, then the name. */
+.dev { display: inline-flex; align-items: center; gap: var(--icon-gap); }
+.dev-icon { position: relative; display: inline-grid; place-items: center; flex: none;
+  width: var(--icon); height: var(--icon); border-radius: 10px; background: var(--surface-2);
+  color: var(--muted); }
+.online { position: absolute; right: -3px; bottom: -3px; width: 0.7rem; height: 0.7rem;
+  border-radius: 50%; background: var(--ok); border: 2px solid var(--surface); }
+/* Profile cards */
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--space); margin-bottom: var(--space); }
+.profile-card { display: flex; flex-direction: column; gap: 0.65rem; margin: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.card-head a { color: var(--text); }
+.next-line { margin: 0; font-weight: 600; }
+.next-line small { font-weight: 400; color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 0;
+  padding: 0.6rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.facts dt { font-size: 0.75rem; color: var(--muted); }
+.facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Device page */
+.device-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.75rem 1rem; margin: 0.75rem 0 0; padding-top: 0.75rem;
+  border-top: 1px solid var(--border); }
+.device-facts dt { font-size: 0.75rem; color: var(--muted); }
+.device-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.device-facts small { font-weight: 400; color: var(--muted); }
+.status-line { margin: 0; }
+h1.dev { display: flex; }
+.controls + .controls { margin-top: 0.6rem; }
+/* Device names in tables open the device: text colour, underlined on hover. */
+a.dev-link { color: inherit; }
+a.dev-link:is(:hover, :focus-visible) { text-decoration: underline; }
+.card-actions form { display: inline-flex; gap: 0.3rem; margin: 0 0.35rem 0.35rem 0; }
+.new-card { justify-content: center; border-style: dashed; box-shadow: none;
+  background: transparent; }
+.new-card form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+/* Pills */
+.pill { display: inline-block; padding: 0.05rem 0.6rem; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 600; line-height: 1.6; white-space: nowrap; }
+.pill-ok { background: var(--ok-bg); color: var(--ok-fg); }
+.pill-warn { background: var(--warn-bg); color: var(--warn-fg); }
+.pill-danger { background: var(--danger-bg); color: var(--danger-fg); }
+.pill-muted { background: var(--muted-bg); color: var(--muted-fg); }
+/* Charts: SVG marks take their colours from the palette. */
+.c-grid { stroke: var(--grid); }
+.c-label { fill: var(--muted); }
+.c-strong { fill: var(--text); font-weight: 600; }
+.c-now { stroke: var(--text); }
+.c-track { fill: var(--track); }
+.c-down { fill: var(--down); }
+.c-up { fill: var(--up); }
+.c-curfew { fill: var(--curfew); }
+.chart-wrap { overflow-x: auto; }
+.timeline { display: block; width: 100%; max-width: 46rem; height: auto; margin-top: 0.4rem; }
+.strip { display: block; width: 100%; height: 0.55rem; }
+.usage-chart { display: block; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; margin: 0.4rem 0;
+  font-size: 0.85rem; color: var(--muted); }
+.legend strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 3px;
+  margin-right: 0.35rem; vertical-align: -0.05rem; }
+.swatch-down { background: var(--down); }
+.swatch-up { background: var(--up); }
+.swatch-blocked { background: var(--curfew); }
+.swatch-answered { background: var(--down); }
+.ranges { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-2); }
+.ranges a { padding: 0.2rem 0.8rem; border-radius: 999px; font-size: 0.85rem;
+  text-decoration: none; color: var(--muted); }
+.ranges a[aria-current] { background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow); }
+/* Small parts */
+.muted { color: var(--muted); }
+.mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; }
+.tag { font-size: 0.72rem; border: 1px solid var(--border); border-radius: 6px;
+  padding: 0 0.35rem; margin-left: 0.3rem; color: var(--muted); }
+.unit { display: none; }
+details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+details form { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+/* Small disclosures ("Show as table", "Delete…"): room above, and the same
+   turning chevron as the folds, so they read as something that opens. */
+details:not(.fold, .hop-detail) { margin-top: 0.9rem; }
+details:not(.fold, .hop-detail) > summary { display: inline-flex; align-items: center; gap: 0.35rem;
+  list-style: none; }
+details:not(.fold, .hop-detail) > summary::-webkit-details-marker { display: none; }
+details:not(.fold, .hop-detail) > summary::before { content: "▸"; transition: transform 0.15s; }
+details:not(.fold, .hop-detail)[open] > summary { margin-bottom: 0.5rem; }
+details:not(.fold, .hop-detail)[open] > summary::before { transform: rotate(90deg); }
+details:not(.fold, .hop-detail) > summary:hover { color: var(--text); }
+.danger-zone { margin-top: 1.25rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+.danger-zone > summary:hover { color: var(--danger); }
+.danger-body { background: var(--danger-bg); border-radius: 10px; padding: 0.75rem 0.9rem; }
+.danger-body p { margin: 0; color: var(--danger-fg); }
+.inline-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+/* A label and its control shrink to the row: a select is otherwise as wide as
+   its longest option (a long device name) and pushes the page past a phone. */
+.inline-form label { display: flex; align-items: center; gap: 0.4rem; min-width: 0;
+  max-width: 100%; }
+.inline-form label > select, .inline-form label > input { min-width: 0; flex: 1 1 auto;
+  text-overflow: ellipsis; }
+section > .inline-form, .table-wrap + .inline-form { margin-top: 0.75rem; }
+.days { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; align-items: center; }
+.days label { white-space: nowrap; }
+.tools { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center;
+  margin: 1.25rem 0 0.75rem; }
+.sort-links { display: none; font-size: 0.85rem; }
+/* Folds: a section whose heading opens and shuts it. */
+.fold { margin: 0 0 var(--space); min-width: 0; }
+.fold > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem;
+  list-style: none;
+  color: var(--text); font-size: inherit; padding: 0.35rem 0; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸"; color: var(--muted); transition: transform 0.15s; }
+.fold[open] > summary::before { transform: rotate(90deg); }
+.fold > summary h2 { margin: 0; font-size: 1.05rem; }
+.fold-count { font-size: 0.8rem; color: var(--muted); background: var(--surface-2);
+  border-radius: 999px; padding: 0 0.5rem; font-variant-numeric: tabular-nums; }
+.fold-note { font-size: 0.85rem; color: var(--muted); }
+.fold-body { padding-top: 0.4rem; }
+.fold-hint { margin: 0 0 0.5rem; font-size: 0.85rem; }
+.fold .policies { margin-bottom: 0; }
+/* A link that flips a view, drawn as a switch. */
+.switch-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text); }
+.switch-link .switch { position: relative; display: inline-block; width: 2.4rem;
+  height: 1.4rem; border-radius: 999px; background: var(--track); }
+.switch-link .knob { position: absolute; top: 0.2rem; left: 0.2rem; width: 1rem; height: 1rem;
+  border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
+.switch-link[aria-checked="true"] .switch { background: var(--ok); }
+.switch-link[aria-checked="true"] .knob { left: auto; right: 0.2rem; }
+.sort-links a[aria-current] { font-weight: 600; color: var(--text); text-decoration: none; }
+.all-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.all-controls form { display: inline-flex; gap: 0.3rem; align-items: center; }
+.sites { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; margin: 0.5rem 0;
+  padding: 0; }
+.sites li { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0 0.15rem 0 0.7rem;
+  border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; }
+.sites.readonly li { padding: 0 0.7rem; }
+.groups-panel { margin-top: var(--space); }
+/* Home: live view beside the Pi-hole scoreboard. */
+.duo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: var(--space); margin-bottom: var(--space); align-items: start; }
+.duo .panel { margin: 0; }
+/* Network: the DHCP and Pi-hole cards, even halves of one height. */
+.duo-even { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.live-chart { display: block; width: 100%; height: auto; }
+.live-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.live-down { stroke: var(--down); }
+.live-up { stroke: var(--up); }
+.live-cross { stroke: var(--muted); stroke-width: 1; }
+.live-read strong { font-size: 1.05rem; }
+.live-hover { margin: 0; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.pihole-top { display: flex; align-items: center; gap: 1rem; }
+.pihole-top p { margin: 0; }
+.ring { width: 5.5rem; height: 5.5rem; flex: none; }
+.ring-track { fill: none; stroke: var(--track); stroke-width: 10; }
+.ring-arc { fill: none; stroke: var(--curfew); stroke-width: 10; stroke-linecap: round; }
+.ring-value { fill: var(--text); font-size: 20px; font-weight: 700; }
+.bars { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; gap: 0.45rem; }
+.bars li { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.6rem;
+  font-size: 0.85rem; }
+.bar-track { display: block; grid-column: 1 / -1; width: 100%; height: 0.5rem;
+  border-radius: 4px; background: var(--track); }
+.bar-track .bar-blocked { fill: var(--curfew); }
+.bar-track .bar-answered { fill: var(--down); }
+.bar-value { grid-row: 1; grid-column: 2; font-variant-numeric: tabular-nums;
+  color: var(--muted); }
+/* Weekly rhythm: one sequential blue ramp, light to dark (dark mode runs the
+   other way so quiet hours recede into the dark surface). */
+.rhythm { display: block; width: 100%; max-width: 46rem; height: auto; }
+.h0 { fill: var(--surface-2); background: var(--surface-2); }
+.h1 { fill: var(--h1); background: var(--h1); } .h2 { fill: var(--h2); background: var(--h2); }
+.h3 { fill: var(--h3); background: var(--h3); } .h4 { fill: var(--h4); background: var(--h4); }
+.h5 { fill: var(--h5); background: var(--h5); } .h6 { fill: var(--h6); background: var(--h6); }
+.scale { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem;
+  font-size: 0.8rem; margin: 0.5rem 0; }
+.h-swatch { display: inline-block; width: 1.1rem; height: 0.8rem; border-radius: 3px; }
+.scale .muted:first-child { margin-right: 0.25rem; }
+.scale .muted:last-child { margin-left: 0.25rem; }
+@media (max-width: 760px) {
+  .duo { grid-template-columns: minmax(0, 1fr); }
+}
+.sites .rule-allow { color: var(--ok); }
+.sites li button { padding: 0 0.45rem; }
+.presets { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.6rem; }
+.presets form { display: inline; }
+button.edit { padding: 0 0.35rem; margin-left: 0.3rem; }
+form.rename { display: inline-flex; gap: 0.3rem; align-items: center; }
+form.rename input, td.newname input { width: 12rem; max-width: 100%; }
+.info { position: relative; display: inline-block; }
+button.info-btn { padding: 0 0.3rem; margin-left: 0.15rem; }
+.info-pop { display: none; position: absolute; left: 1.9rem; top: -0.3rem; z-index: 5;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.4rem 0.7rem; box-shadow: var(--shadow); white-space: nowrap; font-size: 0.85rem; }
+/* Label column bold, values regular (the cell may be bold on phones). */
+.info:hover .info-pop, .info:focus-within .info-pop, .info.open .info-pop {
+  display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.8rem;
+  align-items: baseline; font-weight: 400; }
+.info-key { font-weight: 600; }
+.login { max-width: 22rem; margin: 12vh auto 0; }
+.login .brand { margin-bottom: 1rem; font-size: 1.4rem; }
+.login .brand h1 { margin: 0; font-size: inherit; line-height: 1; }
+.login .logo { width: 2.4rem; height: 2.4rem; }
+.login label { display: block; margin-bottom: var(--space); }
+.login input { display: block; width: 100%; margin-top: 0.3rem; font-size: 1rem;
+  padding: 0.5rem 0.7rem; }
+.login .card button { width: 100%; height: auto; font-size: 1rem; padding: 0.55rem; }
+.login .theme { display: flex; width: max-content; margin: 1rem auto 0; }
+.error { color: var(--danger); }
+footer { padding: 1rem; text-align: center; font-size: 0.85rem; color: var(--muted); }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; }
+/* Phones: sections in a bottom tab bar, rows become cards, bigger targets. */
+@media (max-width: 600px) {
+  .sort-links { display: inline; }
+  body { padding-bottom: calc(4.3rem + env(safe-area-inset-bottom)); }
+  body:has(.topbar.viewer) { padding-bottom: env(safe-area-inset-bottom); }  /* no tab bar */
+  .flow-link { display: none; }  /* the screensaver needs a keyboard to leave; the bar its width */
+  main, footer, .topbar-inner { padding: 0 0.75rem; }
+  main { padding-top: 0.9rem; }
+  h1 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+  nav.primary { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; gap: 0;
+    pointer-events: auto;  /* the tab bar is solid, not part of the top bar's sky */
+    justify-content: space-around; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 0.3rem 0 calc(0.3rem + env(safe-area-inset-bottom)); }
+  nav.primary a { flex-direction: column; gap: 0.1rem; padding: 0.2rem 1.2rem;
+    font-size: 0.72rem; border-radius: 10px; }
+  nav.primary a[aria-current], .topbar nav.primary a[aria-current],
+  .topbar nav.primary a:hover { background: transparent; color: var(--accent); }
+  nav.primary .icon { width: 1.35rem; height: 1.35rem; }
+  .tiles { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .tile-value { font-size: 1.4rem; }
+  :root { --control: 2.3rem; }  /* a bigger target for a finger */
+  /* 16px or more: iOS zooms the page into a smaller box on focus and leaves it
+     zoomed, so the page sits off the side of the screen. */
+  :is(input[type], select, textarea) { font-size: 1rem; }
+  table.cards .card-label { display: inline; font-family: system-ui, sans-serif; }
+  table.cards, table.cards tbody { display: block; width: 100%; }
+  table.cards thead { display: none; }
+  /* A card: name and status on the first line, the details (seen · today ·
+     profile) together on one small line under the name, then the actions. */
+  table.cards tr { display: flex; flex-wrap: wrap; align-items: center; row-gap: 0.15rem;
+    padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); }
+  table.cards tr:last-child { border-bottom: 0; }
+  table.cards td { border: 0; padding: 0; white-space: normal; min-width: 0; }
+  table.cards td.name, table.cards td.lead { order: 0; flex: 1 1 60%; font-weight: 600; }
+  table.cards td.status { order: 1; flex: none; margin-left: auto; }
+  /* An invisible full-width item: details always start their own line. */
+  table.cards tr::before { content: ""; order: 2; flex-basis: 100%; height: 0; }
+  table.cards td.detail { order: 3; font-size: 0.8rem; color: var(--muted); }
+  /* Under the name, past the icon (and its gap), however big they are. */
+  table.cards td.name + td.detail { margin-left: calc(var(--icon) + var(--icon-gap)); }
+  /* A long name ends in "…" so ✎, ⓘ and the tag keep its line (its page and
+     tooltip have it whole). */
+  table.cards .dev { display: flex; max-width: 100%; }
+  table.cards .dev > span:last-child, table.cards :is(.namebox, .shown) {
+    display: flex; align-items: center; min-width: 0; }
+  table.cards :is(.dev-link, .dev-name) { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  table.cards :is(.edit, .info, .tag) { flex: none; }
+  table.cards td.detail + td.detail::before { content: "·"; margin: 0 0.4rem; }
+  table.cards td.lead ~ td.detail { flex: 1 1 100%; }  /* text-heavy rows: one per line */
+  table.cards td.lead ~ td.detail::before { content: none; }
+  /* Short details (an IP, a MAC) share one line: IP · MAC · pool · when. */
+  table.cards.compact td.detail, table.cards.compact td.lead ~ td.detail { flex: none; }
+  table.cards.compact td.detail ~ td.detail::before { content: "·"; margin: 0 0.4rem; }
+  table.cards td.newname { order: 4; flex: 1 1 100%; padding-top: 0.3rem;
+    padding-left: calc(var(--icon) + var(--icon-gap)); }
+  /* Buttons share the details line, at its right end, when they fit. */
+  table.cards td.actions { order: 5; flex: none; margin-left: auto; padding-left: 0.5rem; }
+  table.cards td.actions form { margin: 0 0 0 0.35rem; }
+  table.cards .unit { display: inline; }
+  table.cards td.empty { display: none; }
+  table.cards tr.group { display: block; background: var(--surface-2); }
+  table.cards tr.group th { display: block; padding: 0; }
+  .timeline { min-width: 46rem; max-width: none; }
+  .usage-chart { min-width: 34rem; }
+  .rhythm { min-width: 34rem; }
+}
+/* Phones: the ▸ ends a card's first line; the opened part is a block under it. */
+@media (max-width: 600px) {
+  table.cards td.more-cell { order: 1; flex: none; width: auto; margin-left: 0.3rem; }
+  table.cards tr.dev-row.open { border-bottom: 0; }
+  table.cards tr.dev-more { display: block; padding: 0 0.8rem 0.8rem; }
+  table.cards tr.dev-more > td { display: block; padding: 0; }
+}
+/* Phones: renaming takes the card's whole width — the box on its own line,
+   Save and Cancel side by side under it — and the status and ⓘ step aside. */
+@media (max-width: 600px) {
+  .dev:has(form.rename:not([hidden])) { display: flex; width: 100%; }
+  .dev:has(form.rename:not([hidden])) > span:last-child { flex: 1; min-width: 0; }
+  .dev:has(form.rename:not([hidden])) :is(.info, .tag) { display: none; }
+  .namebox:has(> form.rename:not([hidden])) { display: block; }
+  form.rename { display: flex; flex-wrap: wrap; width: 100%; }
+  form.rename input { flex: 1 1 100%; width: auto; }
+  form.rename button { flex: 1; }
+  table.cards td.name:has(form.rename:not([hidden])) { flex-basis: 100%; }
+  table.cards tr:has(form.rename:not([hidden])) td.status { display: none; }
+}
+/* Small phones: a card's status pill shrinks to a coloured dot, so the name,
+   ✎ and ⓘ keep one line. The word stays for screen readers and the tooltip. */
+@media (max-width: 400px) {
+  table.cards td.status .pill { width: 0.7rem; height: 0.7rem; padding: 0; font-size: 0;
+    vertical-align: middle; }
+  table.cards td.status .pill-ok { background: var(--ok); }
+  table.cards td.status .pill-warn { background: var(--warn); }
+  table.cards td.status .pill-danger { background: var(--danger); }
+  table.cards td.status .pill-muted { background: var(--muted); }
+  /* The top bar's tools stay on one line; "Show all" drops its note. */
+  .topbar-tools { gap: 0.3rem; }
+  .topbar-tools button { white-space: nowrap; }
+  .theme button { padding: 0.3rem 0.4rem; }
+  .switch-link .muted { display: none; }
+  .sky-track { min-width: 1rem; margin: 0 0.25rem; }
+  .topbar .brand span { display: none; }  /* the moon logo stands in for the name */
+}
+/* Every day: the usage calendar (same ramp as the weekly rhythm). */
+.calendar { display: block; width: 100%; max-width: 20rem; height: auto; }
+.calendar .today rect { stroke: var(--text); stroke-width: 1.5; }
+/* Constellation: devices around homehub. Status colours carry a legend. */
+.constellation { display: block; width: 100%; max-width: 44rem; height: auto; margin: 0 auto; }
+.constellation a:hover .star, .constellation a:focus-visible .star {
+  stroke: var(--text); stroke-width: 2; }
+.spoke { stroke: var(--grid); stroke-width: 1; }
+.hub { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.5; }
+/* The glow follows what the device moves right now (--level, 0 to 1, set by
+   the page script); online stars twinkle, out of step (tw0-tw7). */
+.glow { fill: var(--ok); opacity: calc(0.18 + var(--level, 0) * 0.5);
+  transform: scale(calc(1 + var(--level, 0) * 0.8)); transform-box: fill-box;
+  transform-origin: center; transition: opacity 1.5s, transform 1.5s; }
+.star-online { animation: twinkle 4.8s ease-in-out infinite; }
+.tw1 .star-online { animation-delay: -0.6s; } .tw2 .star-online { animation-delay: -1.2s; }
+.tw3 .star-online { animation-delay: -1.8s; } .tw4 .star-online { animation-delay: -2.4s; }
+.tw5 .star-online { animation-delay: -3s; } .tw6 .star-online { animation-delay: -3.6s; }
+.tw7 .star-online { animation-delay: -4.2s; }
+@keyframes twinkle { 50% { opacity: 0.72; } }
+/* A device seen for the first time arrives like a shooting star. */
+.arrive { animation: arrive 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes arrive {
+  from { transform: translate(-120px, -70px); opacity: 0; }
+  60% { opacity: 1; }
+}
+.star-online { fill: var(--ok); }
+.star-offline { fill: var(--muted); opacity: 0.5; }
+.star-cut { fill: var(--danger); }
+.swatch-online { background: var(--ok); }
+.swatch-offline { background: var(--muted); opacity: 0.5; }
+.swatch-cut { background: var(--danger); }
+@media (max-width: 600px) {
+  .constellation { min-width: 30rem; }
+}
+/* The pointer-following tooltip (app.js), and forms waiting on the server. */
+.tip { position: fixed; z-index: 50; max-width: 18rem; padding: 0.35rem 0.6rem;
+  border-radius: 8px; background: var(--text); color: var(--surface); font-size: 0.8rem;
+  line-height: 1.35; box-shadow: var(--shadow); pointer-events: none; }
+form[aria-busy="true"] button { opacity: 0.6; cursor: progress; }
+/* Network: the connection path, one row per hop from the devices out to the
+   internet, and its quality history. A row: dot, title, summary, trouble's
+   word, and (when there's more) a chevron; the row opens to every fact. */
+.path { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+.hop { position: relative; border-top: 1px solid var(--border); font-size: 0.85rem;
+  line-height: 1.45; }  /* titles as big as their lines */
+.hop:first-child { border-top: 0; }
+.hop-row { display: grid; grid-template-columns: 0.6rem 5.5rem minmax(0, 1fr) auto 1rem;
+  column-gap: 0.6rem; align-items: center; padding: 0.4rem 0; color: var(--text);
+  font-size: inherit; }
+.hop-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+summary.hop-row { list-style: none; cursor: pointer; border-radius: 6px; }
+summary.hop-row::-webkit-details-marker { display: none; }
+summary.hop-row:hover { background: var(--surface-2); }
+summary.hop-row::after { content: "▸"; grid-column: 5; justify-self: center;
+  color: var(--muted); font-size: 1.1rem; line-height: 1; transition: transform 0.15s; }
+.hop-detail[open] > summary.hop-row::after { transform: rotate(90deg); }
+/* Every fact, under the row's summary. */
+.hop-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.1rem 0.8rem; margin: 0 0 0 calc(0.6rem + 5.5rem + 1.2rem);
+  padding-bottom: 0.55rem;  /* padding, not margin: a margin would leak out and break the chain */
+  color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.hop-facts .info-key { color: var(--text); }
+/* The dots hang on a thin line: the path as a chain. */
+.hop::before { content: ""; position: absolute; left: calc(0.3rem - 1px); top: 0; bottom: 0;
+  width: 2px; background: var(--border); }
+.hop:first-child::before { top: 1rem; }
+.hop:last-child::before { bottom: auto; height: 1rem; }
+.hop-dot { position: relative; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+  background: var(--muted); box-shadow: 0 0 0 2px var(--surface); }
+.hop-ok .hop-dot { background: var(--ok); }
+/* Warnings are a triangle, not a dot: the shape says it as well as the colour. */
+.hop-warn .hop-dot { background: var(--warn); width: 0.8rem; height: 0.7rem; border-radius: 0;
+  justify-self: center; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.hop-bad .hop-dot { background: var(--danger); }
+.hop-word { grid-column: 4; color: var(--muted); white-space: nowrap; }
+.hop-bad .hop-word { color: var(--danger); font-weight: 600; }
+.hop-warn .hop-word { color: var(--warn); font-weight: 600; }
+/* The summary: facts in a line, each kept whole unless wider than the line. */
+.hop ul { list-style: none; margin: 0; padding: 0; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.hop li { display: inline-block; max-width: 100%; }
+.hop li + li::before { content: "·"; margin: 0 0.4rem; color: var(--muted); }
+/* Each fact: the key in the text colour and bolder, its value muted. */
+.fact-key { color: var(--text); font-weight: 600; }
+/* Phones: one fact per line, trouble's word under them; the facts opened
+   take the width from under the title. */
+@media (max-width: 600px) {
+  .hop-row { grid-template-columns: 0.6rem 5.5rem minmax(0, 1fr) 1rem; }
+  .hop li { display: block; }
+  .hop li + li::before { content: none; }
+  .hop-word { grid-row: 2; grid-column: 3; }
+  summary.hop-row::after { grid-column: 4; grid-row: 1; }
+  .hop-facts { margin-left: calc(0.6rem + 0.6rem); }
+}
+.quality-chart { display: block; width: 100%; height: auto; }
+.q-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.q-gateway { stroke: var(--down); }
+.q-internet { stroke: var(--up); }
+/* A lone reading is a dot: filled, not stroked (the lines stay unfilled). */
+.q-dot.q-gateway { fill: var(--down); stroke: none; }
+.q-dot.q-internet { fill: var(--up); stroke: none; }
+.q-loss { fill: var(--danger); }
+@media (max-width: 600px) {
+  .quality-chart { min-width: 34rem; }
+}
+/* --------------------------------------------------------------- motion --
+   What changed is shown changing; app.js adds these classes for a moment. */
+@keyframes flash { from { background-color: color-mix(in srgb, var(--accent) 22%, transparent); } }
+.changed { animation: flash 1.5s ease-out; }
+/* Charts grow when their view changes: bars up from the baseline, lines
+   drawn left to right (pathLength 1), heatmap cells fading in. */
+@keyframes grow-up { from { transform: scaleY(0); } }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+@keyframes fade-in { from { opacity: 0; } }
+.grow :is(.c-down, .c-up, .q-loss) { transform-box: fill-box; transform-origin: 50% 100%;
+  animation: grow-up 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.grow .q-line { stroke-dasharray: 1 1; animation: draw 0.9s ease-out both; }
+.grow :is(.q-dot, .c-curfew) { animation: fade-in 0.6s ease-out both; }
+.grow:is(.rhythm, .calendar) rect { animation: fade-in 0.6s ease-out both; }
+/* History charts: a dashed line follows the pointer. */
+.crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+/* Countdown to a profile's next change: a ring that empties over the last hour. */
+.countdown { display: inline-flex; align-items: center; gap: 0.25rem;
+  font-variant-numeric: tabular-nums; vertical-align: -0.1em; }
+.cd-ring { width: 1em; height: 1em; flex: none; }
+.countdown.far .cd-ring { display: none; }  /* over an hour away: the ring would just be full */
+.cd-track { fill: none; stroke: var(--track); stroke-width: 3; }
+.cd-arc { fill: none; stroke: var(--curfew); stroke-width: 3; stroke-linecap: round;
+  transition: stroke-dasharray 1s linear; }
+/* The top bar's sky: a sun (or moon) on its arc, placed by app.js, and stars
+   that come out at dusk. Behind the bar's contents, and faint. */
+.sky-tip { overflow: hidden; }
+/* The sun's track: the bar's empty middle (between the sections and the
+   theme switch; between the brand and the switch on phones). The body's
+   --across and --height (0 to 1) come from app.js; its whole disc stays on
+   the track at every hour. */
+.sky-track { position: relative; flex: 1; align-self: stretch; min-width: 3rem;
+  margin: 0 0.5rem; pointer-events: none; }
+.sky-body { --size: 1.5rem; position: absolute; width: var(--size); height: var(--size);
+  border-radius: 50%; left: calc(var(--across, 0.5) * (100% - var(--size)));
+  top: calc(0.15rem + (1 - var(--height, 0.6)) * (100% - var(--size) - 0.3rem)); }
+.sky-sun { background: radial-gradient(circle, #fff6d0 0 28%, #ffd45e 42%, rgb(255 196 70 / 0) 70%); }
+.sky-dawn .sky-sun, .sky-dusk .sky-sun {
+  background: radial-gradient(circle, #ffe6c4 0 28%, #ff9a5a 42%, rgb(255 120 70 / 0) 70%); }
+.sky-moon { background: radial-gradient(circle, #f6f6f2 0 30%, rgb(220 225 255 / 40%) 42%,
+  rgb(220 225 255 / 0) 70%); }
+.sky-stars { position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 8% 30%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 19% 72%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 31% 22%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 44% 64%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 57% 28%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 66% 78%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 78% 18%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 88% 58%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 95% 26%, #fff 50%, transparent); }
+.sky-night .sky-stars { opacity: 0.85; animation: stars 6s ease-in-out infinite alternate; }
+@keyframes stars { to { opacity: 0.45; } }
+/* The toast after a change, with Undo; above the phone tab bar. */
+.toast { position: fixed; left: 50%; bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  z-index: 40; display: flex; align-items: center; gap: 0.75rem;
+  max-width: calc(100vw - 2rem); padding: 0.5rem 0.55rem 0.5rem 1rem; border-radius: 12px;
+  background: var(--text); color: var(--surface); box-shadow: var(--shadow);
+  font-size: 0.9rem; transform: translateX(-50%); animation: toast-in 0.3s ease-out; }
+.toast form { display: inline; }
+.toast button.toast-undo, .toast button.toast-undo:hover { color: inherit; font-weight: 700;
+  border-color: color-mix(in srgb, var(--surface) 35%, transparent); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 0.75rem); } }
+@media (max-width: 600px) {
+  .toast { bottom: calc(5rem + env(safe-area-inset-bottom)); }
+}
+/* Page changes cross-fade (where the browser supports view transitions). */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+/* Moving to another page: the bar stays, the page lifts away and fades out,
+   then the next rises in, so the two never show at once (only while .moving
+   is set; a same-page swap just cross-fades). */
+.moving header.topbar { view-transition-name: topbar; }
+.moving main { view-transition-name: page; }
+::view-transition-old(page) { animation: page-out 0.12s ease-in both; }
+::view-transition-new(page) { animation: page-in 0.24s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s both; }
+@keyframes page-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(12px); } }
+/* Waiting for the next page: the tab clicked breathes (its highlight eases
+   between its lit and resting tones) and the page dims a little, both after
+   a beat so a quick load doesn't flicker. */
+.loading .topbar nav.primary a[aria-current] {
+  animation: tab-wait 0.9s ease-in-out 0.12s infinite alternate; }
+@keyframes tab-wait { to { background: color-mix(in srgb,
+  color-mix(in srgb, var(--sky-hue) 22%, var(--surface)) 75%, transparent); } }
+.loading main { opacity: 0.6; transition: opacity 0.2s ease 0.12s; }
+@keyframes tab-wait-phone { to { opacity: 0.4; } }
+/* Phones' tab bar has no pills: the waiting tab breathes by fading instead
+   (after the rule above, which it overrides). */
+@media (max-width: 600px) {
+  .loading .topbar nav.primary a[aria-current] { animation-name: tab-wait-phone; }
+}
+/* "Reduce motion": nothing moves on its own. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::view-transition-group(*) {
+    animation: none !important; transition: none !important; }
+}
+
+/* DHCP */
+.bar-track .bar-used { fill: var(--accent); }
+td .bar-track { margin-bottom: 0.2rem; }
+.log { overflow-x: auto; white-space: pre; margin: 0.5rem 0 0; max-height: 20rem; }
+
+/* TV (/tv): curfew on the living-room TV, read-only, sized to the screen (rem
+   follows the width, so a 1080p TV and a laptop window look alike).
+   The remote drives it (app.js): left and right walk the tabs, up and down
+   scroll, OK picks a setting. Dark unless Settings says light. */
+@font-face { font-family: "Inter"; src: url("/inter.woff2") format("woff2");
+  font-weight: 100 900; font-display: swap; }
+html.tv-page { font-size: 1.3vw; scroll-behavior: smooth; }
+/* Amazon Ember: the TV's own on a Fire TV (Fire OS names it for WebViews), homehub's
+   elsewhere; its Display cut for large figures; Inter if neither loads. */
+.tv-page body { font: 0.95rem/1.4 "amazon-ember", "Amazon Ember", "Inter", system-ui, sans-serif;
+  font-feature-settings: "cv11"; }
+.tv-page :is(.tv-clock time, .tile-value, .flow-clock time, .flow-weather strong, .flow-rates) {
+  font-family: "amazon-ember-display", "amazon-ember", "Amazon Ember Display", "Amazon Ember",
+    "Inter", system-ui, sans-serif; }
+.tv-page :is(.num, .tile-value, .tv-clock) { font-variant-numeric: tabular-nums; }
+.tv-page .tv-bar .topbar-inner { max-width: none; padding: 0 2.5rem; min-height: 3.2rem;
+  justify-content: space-between; }
+.tv-page .brand { font-size: 1.15rem; font-weight: 650; letter-spacing: -0.01em; }
+.tv-page nav.primary a { font-size: 0.9rem; padding: 0.3rem 0.85rem; }
+/* The tab being loaded breathes until its page arrives (app.js: tvStep). */
+.tv-page.loading .topbar nav.primary a[aria-current] {
+  animation: tv-wait 0.6s ease-in-out infinite alternate; }
+@keyframes tv-wait { to { opacity: 0.45; } }
+/* The keys, the time and the date: one line, their middles level (line-height 1, so
+   each box is its text's height and centring them centres the text). */
+.tv-keys { margin-left: auto; color: var(--muted); font-size: 0.75rem; line-height: 1; }
+.tv-version { margin-left: 1rem; color: var(--muted); font-size: 0.75rem; line-height: 1; opacity: 0.7; }
+.tv-clock { display: flex; align-items: center; gap: 0.6rem; line-height: 1; }
+.tv-clock time { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+.tv-clock small { color: var(--muted); font-size: 0.85rem; }
+main.tv { max-width: none; padding: 1.1rem 2.5rem 1.5rem; }
+.tv .tiles { grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.tv .tile-value { font-size: 1.9rem; font-weight: 650; letter-spacing: -0.02em; }
+.tv-grid { display: grid; gap: 1rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr) minmax(0, 1fr); }
+.tv-col { display: flex; flex-direction: column; gap: 1rem; }
+.tv-col > .panel { margin: 0; }
+.tv-col > .panel:last-child { flex: 1; }  /* the columns end together */
+.tv .panel-head h2 { font-size: 1rem; font-weight: 600; }
+.tv .panel-head .muted { display: none; }  /* hints about clicking, and the like */
+/* Home fills the screen: the three columns run to its foot. */
+main.tv-home { height: calc(100vh - 3.2rem); display: flex; flex-direction: column; }
+.tv-home .tv-grid { flex: 1; min-height: 0; }
+.tv-home .chart-wrap svg { min-width: 0; width: 100%; }
+/* Bandwidth's chart is too small to read in Home's narrow column: its latest
+   figures stay, and Network has the chart. */
+.tv-home [aria-labelledby="bandwidth-title"] .chart-wrap { display: none; }
+.tv-top :is(td, th) { min-width: 0; }
+.tv-home [aria-labelledby="constellation-title"] { display: flex; flex-direction: column; }
+.tv-home [aria-labelledby="constellation-title"] .chart-wrap { flex: 1; display: flex;
+  align-items: center; }
+.tv .constellation { max-width: none; }
+/* Home's charts sit in narrow columns, which shrink their axis print past
+   reading from the couch: the legends above them carry the figures instead.
+   The constellation's group names get larger. Full-width tabs keep it all. */
+.tv-home :is(.live-chart, [aria-labelledby="bandwidth-title"] svg) text { display: none; }
+.tv-home .constellation text { font-size: 16px; }
+.tv-home [aria-labelledby="constellation-title"] .chart-wrap, .tv-home .constellation {
+  overflow: visible; }
+.tv-top td { padding-block: 0.3rem; }
+.tv-top .dev-icon { --icon: 1.6rem; }
+.tv-top { table-layout: fixed; width: 100%; }
+.tv-top :is(th, td):last-child { width: 5.5rem; }
+.tv-top td.name { overflow: hidden; }
+.tv-top .dev { display: flex; width: 100%; min-width: 0; }
+.tv-top .dev > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; flex: 0 1 auto; }
+.tv-top .dev .pill { flex: none; margin-left: 0.5rem; }  /* the name gives way to it */
+/* Settings: big choices; the focused one (the remote's) is lit. */
+.tv-options { display: flex; gap: 1rem; margin: 0.6rem 0 0.8rem; }
+.tv-option { display: inline-flex; align-items: center; gap: 0.6rem; padding: 1rem 1.6rem;
+  font: inherit; font-size: 1.1rem; border-radius: var(--radius); border: 2px solid var(--border);
+  background: var(--surface-2); color: var(--text); }
+.tv-option[aria-pressed="true"] { border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface)); font-weight: 600; }
+.tv-option:focus { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* The screensaver (/tv/flow): the canvas fills the screen; the clock and the
+   house's rates sit in its lower corners, the hint fades in and out. */
+.tv-saver body, main.tv-flow { overflow: hidden; background: #000; }  /* space */
+/* The TV page's rem (1.3vw) fixed at the TV's 960 px wide: a bigger window scales the
+   whole layout once, by --flow-zoom, not again by its rem */
+html.tv-saver { font-size: 12.48px; }
+/* At a desk, close up: the temperature and the clock smaller than for across a room */
+.flow-desk .tv-flow :is(.flow-clock time, .flow-weather strong) { font-size: 2rem; }
+.flow-desk .tv-flow .flow-weather .icon { width: 2rem; height: 2rem; }
+.flow-desk .tv-flow .flow-calendar { top: calc(max(2rem, 34px) + 17px); }
+main.tv-flow { position: fixed; inset: 0; max-width: none; padding: 0; }
+/* A window bigger than the TV's page shows it scaled up (set by flowView's fit) */
+.tv-flow > :is(.flow-top, .flow-calendar, .flow-bar) { zoom: var(--flow-zoom, 1); }
+#flow, .flow-labels { position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; }
+.tv-flow > :not(canvas) { z-index: 1; }  /* the corners over the canvas */
+/* The foot: one status bar, edge to edge along the bottom and square, the clock left, a
+   fact in the middle and the connection right. Nothing in it moves with what it says: the
+   sides are fixed and as wide as each other, so the fact is centred on the screen; the
+   bar is always two lines tall (the rates, down over up), the fact up to two, centred. */
+.flow-bar { position: absolute; left: 0; right: 0; bottom: 0; display: grid;
+  grid-template-columns: 15em minmax(0, 1fr) 15em; column-gap: 1.5em; align-items: center;
+  padding: 0.35em 1em; font-size: 13px; line-height: 1.3; }
+.flow-clock { justify-self: start; }
+.flow-clock time { font-size: 2.6rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1;
+  font-variant-numeric: tabular-nums; }
+/* The connection's last few minutes beside its rates: down above the line, up below, each
+   in a slot as wide as its widest reading, right-aligned. */
+.flow-rates { justify-self: end; display: grid; grid-template-columns: auto 9.5em;
+  column-gap: 0.6em; align-items: center; justify-items: end; white-space: nowrap; }
+.flow-history { grid-row: span 2; width: 4.5em; height: 2.2em; }
+.flow-rates strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.flow-down { color: var(--down); } .flow-up { color: var(--up); }
+/* The head: a status bar as the foot's, edge to edge along the top, square, two lines
+   tall: the weather left, the theme's name centred (for a few seconds), the hint right. */
+.flow-top { position: absolute; left: 0; right: 0; top: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 1.5em; align-items: center;
+  padding: 0.35em 1em; font-size: 13px; line-height: 1.3; }
+.flow-top > .flow-weather { grid-column: 1; }
+/* Wide rather than tall: the temperature, and beside it the words over one line of the rest. */
+.flow-weather { display: grid; grid-template-columns: auto auto; justify-content: start;
+  align-items: center; column-gap: 0.8em; }
+.flow-weather strong { grid-row: span 2; font-size: 2.6rem; font-weight: 650; letter-spacing: -0.02em;
+  line-height: 1; display: flex; align-items: center; gap: 0.4em; }
+.flow-weather .icon { width: 2.6rem; height: 2.6rem; stroke-width: 1.6; }
+.flow-weather span { font-weight: 600; align-self: end; }
+.flow-weather small { color: var(--muted); font-size: 0.85em; align-self: start; white-space: nowrap; }
+/* Under the head, top left: the date and the calendar's today and tomorrow, small. */
+.flow-calendar { position: absolute; top: calc(max(2.6rem, 34px) + 17px); left: 8px; max-width: 19rem; padding: 0.5em 0.8em;
+  font-size: 11px; line-height: 1.35; }
+.flow-date { margin: 0; font-size: 1.15em; font-weight: 650; }
+.flow-calendar section { margin-top: 0.5em; }
+.flow-calendar h3 { margin: 0 0 0.15em; color: var(--muted); font-size: 0.8em; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; }
+.flow-calendar ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.1em; }
+.flow-calendar li { display: flex; gap: 0.6em; white-space: nowrap; }
+.flow-calendar li span { overflow: hidden; text-overflow: ellipsis; }
+.flow-calendar li time { flex: none; width: 3.4em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.flow-calendar li.more { color: var(--muted); font-size: 0.9em; }
+/* A fact, in the bar's middle, changing every 15 s with a fade (app.js). */
+.flow-fact { margin: 0; text-align: center; font-weight: 500; color: var(--text);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  opacity: 0; transition: opacity 0.9s ease; }
+.flow-fact.shown { opacity: 0.88; }
+.flow-hint { grid-column: 3; justify-self: end; margin: 0; color: var(--muted); opacity: 0.8;
+  display: flex; gap: 1em; font-size: 0.82em; white-space: nowrap; }
+.flow-hint b { font-weight: 650; color: var(--text); margin-right: 0.15em; }  /* the button bold, what it does not */
+/* As the Fire TV's own screensaver (the app's FlowDream), any key wakes it: no hint. */
+.dream .flow-hint { display: none; }
+.tv-flow:not(.flow-highway) .flow-hint-speed { display: none; }
+
+/* The screensaver's space: two layers of stars drifting at their own speeds (the
+   near ones farther), a glow low in the sky by dawn, day and dusk, and the moon:
+   behind either look. */
+.flow-stars { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; }
+.flow-stars-0 { animation: flow-drift 300s ease-in-out infinite alternate; }
+.flow-stars-1 { animation: flow-drift 140s ease-in-out infinite alternate; --drift: 4.5%; }
+@keyframes flow-drift { to { transform: translate(var(--drift, 1.5%), calc(var(--drift, 1.5%) / -2)); } }
+.tv-flow > .flow-horizon { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.flow-horizon.sky-dawn { background: radial-gradient(120% 45% at 50% 105%,
+  rgb(246 167 124 / 22%), rgb(249 212 139 / 8%) 45%, transparent 70%); }
+.flow-horizon.sky-dusk { background: radial-gradient(120% 45% at 50% 105%,
+  rgb(229 140 94 / 22%), rgb(154 127 209 / 12%) 45%, transparent 70%); }
+.flow-horizon.sky-day { background: radial-gradient(120% 45% at 50% 105%,
+  rgb(125 184 240 / 14%), transparent 65%); }
+/* A record for the day: the rates glow for a moment. */
+.flow-rates strong { transition: text-shadow 0.6s ease; }
+.flow-rates.record strong { text-shadow: 0 0 1.2rem currentColor, 0 0 0.3rem currentColor; }
+/* The theme's name, in the head's middle: in as the screensaver starts (or the theme changes,
+   which reloads it), out a few seconds later. */
+.flow-look { grid-column: 2; margin: 0; font-weight: 600; color: var(--muted); opacity: 0;
+  animation: flow-look 5.5s ease forwards; }
+@keyframes flow-look { 12% { opacity: 0.9; } 72% { opacity: 0.9; } 100% { opacity: 0; } }
+/* Zen: every word fades away (the canvas fades its own). */
+.flow-top, .flow-calendar, .flow-bar { transition: opacity 1.2s ease; }
+.zen :is(.flow-top, .flow-calendar, .flow-bar, .flow-look) {
+  opacity: 0 !important; animation: none; }
+/* Changing theme: the scene (its names, its sky, stars, sun and moon) fades to black under
+   one black veil, changes behind it, and fades in from black (flow.js); the words (the
+   status bars, with the weather, and the calendar) stay over it. */
+.flow-black { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease; }
+.tv-flow.switching > .flow-black { opacity: 1; }
+.tv-flow > :is(.flow-top, .flow-calendar, .flow-bar) { z-index: 2; }
+/* Neighbourhood and Forest: their own sky (a still picture, app.js), and none of space's
+   layers: the scene is drawn on the one canvas over it, so the TV has only three to combine. */
+.flow-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+.tv-flow:is(.flow-town, .flow-forest, .flow-highway) > .flow-sky { display: block; }
+.tv-flow:is(.flow-town, .flow-forest, .flow-highway) > :is(.flow-stars, .flow-horizon) { display: none; }
+/* Its sky can be a day's blue (app.js): the words keep a soft shadow to stand on. */
+.tv-flow:is(.flow-town, .flow-forest, .flow-highway) > :not(canvas) { text-shadow: 0 1px 0.5rem rgb(0 0 0 / 45%); }
+.tv-flow:is(.flow-town, .flow-forest, .flow-highway) :is(.flow-weather small, .flow-calendar :is(h3, time, .more), .flow-hint) {
+  color: #d6d6d0; }
+/* In every theme, every word sits on a dark see-through panel, as the houses' names do,
+   so nothing drawn behind (a label, a stream, a pale sky) runs into it: the head and the
+   foot (square) and the calendar. As dark as the labels on the canvas (VEIL, app.js):
+   30%, fixed. */
+.tv-flow :is(.flow-top, .flow-calendar, .flow-bar) { background: rgb(11 13 18 / 30%); }
+.tv-flow .flow-calendar { border-radius: 0.25rem; }
+/* At a computer or a tablet: the remote's buttons on the screen (flow.js), sliding out of
+   a Controls button at the top bar's right. In zen the button fades while nothing moves.
+   It sits over the bar it overlaps, or the bar takes its clicks. */
+.flow-desk .flow-top { padding-right: 8.5em; }
+.tv-flow > .flow-menu { z-index: 3; }
+.flow-menu { position: absolute; top: 0; right: 0; display: flex; align-items: center;
+  gap: 0.4em; height: 3.3em; padding: 0 1em;  /* (then the bar's height: flow.js) */
+  font-size: 13px; line-height: 1.3;
+  zoom: var(--flow-zoom, 1); transition: opacity 0.6s ease; }
+.zen.flow-still:not(.flow-menu-open) .flow-menu { opacity: 0; }
+.flow-menu-items { display: flex; gap: 0.4em; overflow: hidden; max-width: 0; opacity: 0;
+  visibility: hidden; transition: max-width 0.3s ease, opacity 0.3s ease, visibility 0s 0.3s; }
+.flow-menu-open .flow-menu-items { max-width: 54em; opacity: 1; visibility: visible;
+  transition: max-width 0.3s ease, opacity 0.3s ease; }
+.flow-menu button { flex: none; height: 1.8em; padding: 0 0.9em; border: 0; border-radius: 0.35em;  /* (low, squarish) */
+  background: rgb(11 13 18 / 55%); color: #f2f2ee; font: inherit; font-weight: 600; cursor: pointer;
+  backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%);
+  touch-action: manipulation; }  /* (no double-tap zoom swallowing a quick second tap) */
+.flow-menu button:hover, .flow-menu-toggle[aria-expanded="true"] { background: rgb(60 64 74 / 70%); }
+.flow-menu-min { display: none; flex: none; align-items: center; gap: 0.3em; }
+.flow-highway .flow-menu-min { display: flex; }
+.flow-menu-min span { min-width: 6.6em; text-align: center; font-weight: 600; color: #f2f2ee; text-shadow: 0 1px 3px #000; }
+@media (hover: none) { .flow-menu button { height: max(1.8em, 36px); } }

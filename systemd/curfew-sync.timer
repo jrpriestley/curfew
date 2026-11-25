@@ -1,0 +1,9 @@
+[Unit]
+Description=Run curfew sync every minute so profile schedules start and end on time
+
+[Timer]
+OnCalendar=*-*-* *:*:05
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=curfew: push devices and leases to the firewall
+# dhcpd writes the leases file several times in a burst; each write starting
+# a run is normal, not a fault. Left at the default limit (5 in 10s), systemd
+# gave up on a burst and took curfew-leases.path down with it.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/opt/curfew/bin/curfew firewall

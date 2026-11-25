@@ -1,0 +1,12 @@
+[Unit]
+Description=curfew: follow DHCP leases into the firewall
+
+[Path]
+# dhcpd appends to the file on every lease and renewal, keeping it open
+# (so PathChanged, which waits for a close, never fires); the firewall
+# follows at once.
+PathModified=/var/lib/dhcp/dhcpd.leases
+Unit=curfew-leases.service
+
+[Install]
+WantedBy=multi-user.target

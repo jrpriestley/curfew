@@ -1,0 +1,6 @@
+[Unit]
+Description=curfew: apply blocks and schedules, sync Pi-hole, log usage
+
+[Service]
+Type=oneshot
+ExecStart=/opt/curfew/bin/curfew sync

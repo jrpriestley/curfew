@@ -1,0 +1,78 @@
+# curfew settings: copy to /etc/curfew/curfew.toml and change what you need.
+# Every key is optional; the values below are the defaults (homehub's).
+
+[web]
+host = "0.0.0.0"                      # the router firewall drops WAN, so all addresses is fine
+port = 8088
+users = ["curfew-admin", "al"]        # login-only system accounts (no shell, sshd DenyUsers)
+viewers = ["cy"]                      # the same, read-only: Home and the screensaver only
+tls_dir = "/etc/homehub-router/tls"  # server.crt, server.key, ca.crt (make-cert.sh)
+
+[paths]
+state_dir = "/var/lib/homehub-router"  # devices.json, traffic.db, pihole-sync.json, state.lock
+ieee_dir = "/usr/share/ieee-data"       # maker registries (ieee-data package)
+ember_dir = "/usr/local/share/ember"  # Amazon Ember, ember-400.woff2 and so on; Inter or the system font without it
+
+[dhcp]
+leases = "/var/lib/dhcp/dhcpd.leases"
+conf = "/etc/dhcp/dhcpd.conf"           # the global settings; it includes curfew_conf
+curfew_conf = "/etc/dhcp/curfew.conf"   # written by curfew: classes, the subnet, pools, fixed hosts
+service = "isc-dhcp-server"
+dhcpd = "/usr/sbin/dhcpd"               # run as dhcpd -t to check a change before it goes live
+
+[network]
+nft_table = "inet router"               # the table router.nft defines
+wan = "ppp0"                            # the internet interface (usage, live view)
+lan = "enp5s0"                          # the house side (connection path)
+address = "10.7.0.1"                    # homehub's own address on the house side
+wan_link = "eno1"                       # the cable to the modem
+modem = "10.7.0.254"                    # the ONTbox's management address
+line_mbps = [1000, 1000]                # what the line is sold as, down and up (TV shares)
+ppp_service = "ppp@fibrenet"            # PPPoE session uptime comes from this unit
+ping_targets = ["1.1.1.1", "8.8.8.8"]   # the internet hop; the first is also logged each minute
+dns_server = "127.0.0.1"                # Pi-hole, asked directly for the DNS check
+probe_mark = "51820"                    # pings carry this mark so they take ppp0, not the VPN ("" for none)
+services = ["homehub-router", "isc-dhcp-server", "pihole-FTL", "unbound"]
+
+# Other tools' cards on the connection path. The command prints one JSON line,
+# {"state": "ok|warn|down|off", "facts": [["key", "value"], ...]}; the card
+# goes after the hop named by `after` (unless the tool's JSON names one: the
+# VPN's moves after Fibrenet in house mode).
+[[network.status]]
+name = "VPN"
+command = ["/usr/local/sbin/homehub-vpn", "status", "--json"]
+after = "homehub"
+
+[pihole]
+gravity_db = "/etc/pihole/gravity.db"
+api = "http://127.0.0.1/api"
+cli_password = "/etc/pihole/cli_pw"
+# doh_domains = "/path/to/doh-domains.txt"  # default: the list inside the package
+
+[devices]
+recent_days = 30                        # "recent" devices shown by default
+
+[schedules]
+morning = "07:00"                       # "pause until morning"
+
+[sky]
+# Where homehub is (a town is close enough), so the top bar's dawn and dusk
+# follow sunrise and sunset; without these it uses fixed hours (5, 8, 17, 21).
+latitude = 51.48
+longitude = 0.0
+
+[refresh]
+# How often the pages update themselves, in seconds (each has a floor).
+page = 30     # the whole page: lists, tiles, charts (at least 10)
+path = 10     # the connection path, which pings every hop (at least 5)
+pihole = 30   # Pi-hole's stats, asked of its API (at least 10)
+live = 2      # the live throughput charts (at least 1)
+stars = 5     # the constellation's glow (at least 2)
+
+[speedtest]
+# The weekly test (Sundays 03:30, curfew-speedtest.timer), only ever against servers
+# within near_km of [sky] (no [sky], no test). The command reads those servers on stdin
+# (speedtest.net's server list, nearest first) and prints speedtest-cli's --json
+# (download and upload in bits/s, ping in ms, server). The default runs speedtest-cli.
+near_km = 100
+# command = ["/usr/bin/python3", "-I", ".../curfew/nearby_speedtest.py"]

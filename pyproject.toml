@@ -1,0 +1,31 @@
+[project]
+name = "curfew"
+version = "1.120.0"
+description = "The house network on homehub: who gets internet and when, how the connection is doing, DHCP, and a TV view, from a web page or the command line"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []  # standard library only
+
+[project.scripts]
+curfew = "curfew.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["curfew"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]  # independent of the editable install

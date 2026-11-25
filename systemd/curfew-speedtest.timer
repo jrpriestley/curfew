@@ -1,0 +1,10 @@
+[Unit]
+Description=Run curfew's speed test early on Sunday mornings, when the house is asleep
+
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00
+# A missed run is skipped, not made up later in the day when the house is busy.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

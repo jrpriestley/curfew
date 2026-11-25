@@ -1,0 +1,137 @@
+# The TV screensaver's facts about the internet and computing: one a line, shown in turn
+# (curfew.web.pages.tv). Keep them true, and short enough for two lines.
+The first message over ARPANET, UCLA to Stanford in October 1969, was “LO”: the system crashed before “LOGIN” was finished.
+The first spam went out in 1978: an advert for DEC computers, to about 400 ARPANET users.
+Scott Fahlman proposed :-) for jokes on a Carnegie Mellon message board in 1982.
+The first website went live at CERN in 1991, and it's still there: info.cern.ch.
+ping is named after sonar. Mike Muuss wrote it in an evening in 1983.
+traceroute sends packets set to die after 1, 2, 3… hops, and maps the path from each router's “time exceeded” complaint.
+There are 13 root server names, a to m, but well over a thousand machines around the world answer for them.
+On 1 January 1983, “flag day”, ARPANET switched to TCP/IP overnight: the start of the internet as we know it.
+Before DNS (Paul Mockapetris, 1983), every computer's address came from one shared file, HOSTS.TXT.
+HTTP 418 “I'm a teapot” comes from an April Fools' RFC in 1998.
+RFC 1149 sends IP packets by carrier pigeon. A Norwegian group actually tried it in 2001.
+Ethernet was invented at Xerox PARC in 1973; it first ran at 2.94 Mb/s.
+The first Wi-Fi standard, 802.11 in 1997, topped out at 2 Mb/s.
+An Ethernet frame carries at most 1,500 bytes: the internet moves in pieces about a paragraph long.
+10.x.x.x addresses like this house's are set aside by RFC 1918: the internet never routes them.
+A MAC address's first half names its maker. curfew uses it to guess what each device is.
+Port 443 carries the encrypted web, 80 the plain one, 53 DNS, 22 SSH.
+Bluetooth is named after Harald Bluetooth, a 10th-century Danish king; its logo joins his initials in runes.
+The computer “bug”: in 1947 a moth was found in Harvard's Mark II and taped into the log book.
+The NSFNET backbone ran at 56 kb/s in 1986: slower than a phone's text messages feel today.
+The first YouTube video, “Me at the zoo” (2005), is 19 seconds long.
+CAPTCHA stands for Completely Automated Public Turing test to tell Computers and Humans Apart.
+The .tv domain belongs to Tuvalu, a Pacific island nation that earns real money from it.
+Google is named after a googol: 10 to the power of 100.
+Light in fibre covers about 200 km each millisecond: no reply from across the Atlantic comes back in much under 60 ms.
+About 99% of the traffic between continents travels through cables on the sea floor, not satellites.
+One cable, 2Africa, runs about 45,000 km around a continent.
+The first webcam, at Cambridge in 1991, watched a coffee pot, so nobody walked to an empty one.
+Ray Tomlinson picked the @ sign for email in 1971, twenty years before the web.
+The first .com name, symbolics.com, was registered on 15 March 1985.
+IPv4 has about 4.3 billion addresses, fewer than there are people; IPv6 has about 340 undecillion.
+Every name a device here looks up goes through Pi-hole on homehub, which answers, or quietly refuses the ads.
+Paul Baran in the US and Donald Davies in Britain invented packet switching independently in the 1960s; Davies named the packet.
+ARPANET's first four sites, in 1969, were UCLA, SRI, UC Santa Barbara and the University of Utah.
+RFC 1, "Host Software", was written by Steve Crocker in April 1969. The series now runs past 9,000.
+RFCs are "Requests for Comments" so the first ones wouldn't sound like orders. They became the internet's standards anyway.
+Vint Cerf and Bob Kahn published the design of TCP in 1974.
+The word "internet" first appears in RFC 675 in 1974, short for "internetworking".
+Telnet (1969) is older than TCP/IP, and FTP (1971) nearly as old.
+SMTP, which still carries the world's email, was defined in 1982.
+Usenet began in 1979 between Duke and UNC, passing news over dial-up phone links.
+The first top-level domains, in 1985, were .com, .org, .net, .edu, .gov and .mil.
+Canada's .ca was created in 1987.
+CA*net, Canada's first national internet backbone, opened in 1990.
+The World, in Boston, became the first commercial dial-up ISP in 1989.
+Archie (1990) was the first internet search engine. It indexed FTP sites, not web pages.
+Gopher, from the University of Minnesota in 1991, rivalled the web until licence fees scared people off.
+CERN put the web into the public domain on 30 April 1993, royalty-free for anyone.
+Mosaic (1993) made the web popular by showing pictures in line with the text.
+The first web server, a NeXT computer at CERN, carried a label: "This machine is a server. DO NOT POWER IT DOWN!!"
+The first banner ad ran on HotWired in 1994: "Have you ever clicked your mouse right here? You will."
+The first thing sold on eBay, in 1995, was a broken laser pointer, for $14.83.
+Hotmail launched on 4 July 1996; its capitals spelled HoTMaiL, for HTML.
+The NSFNET backbone shut down in 1995, leaving the internet to commercial networks.
+The Morris worm of 1988 infected thousands of computers, a sizeable share of the internet then, and led to the first CERT.
+The first emoji, 176 of them, were drawn by Shigetaka Kurita for NTT DoCoMo phones in 1999.
+The first tweet, in March 2006, was Jack Dorsey's "just setting up my twttr".
+Wikipedia went live on 15 January 2001.
+"Surfing the internet" took off from a 1992 article by librarian Jean Armour Polly.
+The 1996 "ping of death": a single oversized ping could crash a computer.
+GIF came from CompuServe in 1987. Its creator said it's pronounced "jif".
+PNG was created in 1996 to get around a patent on GIF's compression.
+MP3's inventors tuned it on Suzanne Vega's "Tom's Diner", a hard song to compress well.
+The 1858 transatlantic telegraph cable lasted about three weeks; Queen Victoria's 98-word message took some 16 hours.
+TAT-8, in 1988, was the first transatlantic fibre-optic cable.
+Undersea cables carry repeaters every 50 to 100 km to boost the light.
+Light in glass fibre travels about a third slower than in a vacuum.
+Hollow-core fibre guides light through air instead of glass, and cuts delay by about a third.
+Glass fibre doesn't conduct electricity: lightning can't ride a fibre line into the house.
+Ethernet cable twists its pairs, each at a different rate, to cancel interference.
+Gigabit Ethernet sends on all four pairs, in both directions at once.
+Cat6 carries 10 Gb/s up to 55 m; Cat6a takes it the full 100 m.
+Power over Ethernet can deliver up to 90 W through a network cable.
+Ethernet is named after the "luminiferous ether" once thought to carry light.
+"Wi-Fi" isn't short for anything: a branding firm coined it in 1999.
+802.11ax became "Wi-Fi 6" in 2018, when Wi-Fi's generations got simple numbers.
+IEEE 802 is the committee for networks like Ethernet (802.3) and Wi-Fi (802.11); it first met in February 1980.
+Only channels 1, 6 and 11 of 2.4 GHz Wi-Fi don't overlap each other.
+Microwave ovens work around 2.45 GHz, the same band as 2.4 GHz Wi-Fi, which is why one can stall the other.
+Wi-Fi 6E and 7 add the 6 GHz band: more room than 2.4 and 5 GHz put together.
+Starlink satellites orbit at about 550 km; a geostationary one, at 35,786 km, adds about half a second to a round trip.
+Copper DSL slows with distance: the closer to the exchange, the faster it runs.
+A 56k modem rarely got past 53 kb/s, because of limits on line power.
+Dial-up's screech was two modems testing the phone line to find the fastest speed it could bear.
+PPPoE, which this house's connection uses, adds 8 bytes to each packet, so they top out at 1,492 bytes.
+A gigabit line could move a 700 MB CD's worth in about six seconds.
+Internet speeds are sold in bits; files are measured in bytes, eight times bigger.
+Latency, not bandwidth, is what makes a page feel slow: loading one takes many round trips.
+Bufferbloat: oversized buffers in routers can add whole seconds of delay when a line is busy.
+IPv4 packets carry a hop limit, at most 255, so a lost packet can't circle forever.
+TCP opens with a three-way handshake: SYN, SYN-ACK, ACK.
+Video calls use UDP, not TCP: a late frame is no use, so there's no point waiting for it again.
+HTTP/3 runs over QUIC, on UDP. QUIC began at Google and became a standard in 2021.
+TLS 1.3 (2018) sets up an encrypted connection in one round trip instead of two.
+Let's Encrypt, since 2015, has issued billions of free certificates, which is why most of the web is HTTPS now.
+NTP, from 1985, keeps clocks across the internet in step to within milliseconds.
+BGP stitches the internet's tens of thousands of networks together. A BGP mistake took Facebook offline for six hours in October 2021.
+In 2008 a BGP announcement from Pakistan accidentally took YouTube down worldwide.
+DNSSEC signs DNS answers; the root zone was signed in 2010, its keys kept by ceremony with crypto officers on several continents.
+Before DHCP (1993) there was BOOTP (1985), and before that, typing addresses in by hand.
+ARP finds a device on the local network by asking everyone: "who has 10.7.1.5?"
+A MAC address is 48 bits: about 281 trillion possibilities.
+Phones now make up a random MAC address for each Wi-Fi network, so they can't be followed from one to the next.
+NAT lets this whole house share one public IPv4 address.
+The whole 127.x.x.x block, 16 million addresses, means "this computer": 127.0.0.1 is just the usual one.
+A single IPv6 subnet has 18 quintillion addresses.
+1.1.1.1 was so abused as a fake address that, before Cloudflare used it for DNS, researchers studied the junk sent to it.
+8.8.8.8, Google's public DNS, opened in 2009.
+Email finds its way by DNS MX records, around since 1986.
+Ports below 1024 are "well-known": on Unix, only root may listen on them.
+# Computing in general.
+Ada Lovelace published what's often called the first program in 1843, for Babbage's Analytical Engine, which was never built.
+Alan Turing's 1936 paper described a machine that could compute anything computable, years before any computer existed.
+ENIAC, finished in 1945, weighed about 27 tonnes and ran on some 18,000 vacuum tubes.
+ENIAC's first programmers were six women, among them Jean Bartik and Kathleen McNulty.
+Grace Hopper's team wrote one of the first compilers, A-0, in 1952.
+IBM's first hard drive, the RAMAC 350 of 1956, held about 3.75 MB on fifty 24-inch platters.
+Werner Buchholz coined "byte" at IBM in 1956, spelt with a y so it couldn't be misread as "bit".
+Gordon Moore predicted in 1965 that chips would double their transistors every year; in 1975 he made it every two.
+The first mouse, from Douglas Engelbart's team in the 1960s, was a wooden box with two metal wheels.
+Engelbart's 1968 "Mother of All Demos" showed the mouse, hypertext and video calls in a single sitting.
+The Apollo Guidance Computer had about 4 KB of working memory; its programs were woven by hand into rope memory.
+Intel's 4004, in 1971 the first commercial microprocessor, had 2,300 transistors.
+Unix counts time in seconds from 1 January 1970; a signed 32-bit count runs out on 19 January 2038.
+"Hello, world" first appeared in Brian Kernighan's writing on the B language in 1972.
+The QWERTY layout comes from Christopher Latham Sholes's typewriters of the 1870s.
+ASCII (1963) has 128 characters; Unicode now has more than 150,000.
+VisiCalc (1979), the first spreadsheet for personal computers, sold Apple IIs to businesses on its own.
+Ctrl+Alt+Del was David Bradley's IBM PC shortcut; he chose keys too far apart to press by accident.
+Brain (1986), the first virus for IBM PCs, was written by two brothers in Lahore.
+The 3.5-inch floppy disk, still the "save" icon, held 1.44 MB.
+Linus Torvalds announced Linux in 1991 as "just a hobby, won't be big and professional".
+Python is named after Monty Python, not the snake.
+Brendan Eich wrote the first version of JavaScript in about ten days in 1995.
+A "1 TB" drive shows as about 931 GB on Windows, which counts in powers of 1,024 rather than 1,000.
